@@ -1,0 +1,54 @@
+# Usage: pip install -r requirements.txt
+
+# Base 基本----------------------------------------
+matplotlib>=3.2.2    
+numpy>=1.18.5,<1.24.0     
+opencv-python>=4.1.1      #计算机视觉库，可用于图像和视频处理，如目标检测、图像识别、图像分割等。
+Pillow>=7.1.2      #Python 图像处理标准库，用于图像存储、处理和显示等操作，支持多种图像格式。
+PyYAML>=5.3.1     #用于解析和处理 YAML 格式文件，YAML 常用于配置文件编写，方便人类读写和程序解析。
+requests>=2.23.0    #用于发送 HTTP 请求，方便与 Web API 交互，获取或提交数据
+scipy>=1.4.1     #基于 numpy ，提供了丰富的数学算法和函数，涵盖数值积分、优化、信号处理等领域。
+
+
+#下面两个请手动下载
+# torch>=1.7.0,!=1.12.0  
+# torchvision>=0.8.1,!=0.13.0    
+
+
+tqdm>=4.41.0  #提供进度条功能，在循环任务（如文件读取、模型训练迭代 ）中展示任务进度，方便了解程序执行情况。
+protobuf<4.21.3   #一种轻便高效的结构化数据存储格式，用于数据序列化和反序列化，在网络通信、数据存储等场景应用。
+
+# Logging日志 -------------------------------------
+
+tensorboard>=2.4.1  #用于可视化深度学习训练过程中的指标，如损失值、准确率等，还能展示模型结构、特征图等信息，辅助模型调试和优化。
+
+# wandb
+
+# Plotting 图表------------------------------------
+pandas>=1.1.4
+seaborn>=0.11.0
+
+# Export 导出 --------------------------------------
+
+# coremltools>=4.1  # CoreML export
+# onnx>=1.9.0  # ONNX export
+# onnx-simplifier>=0.3.6  # ONNX simplifier
+# scikit-learn==0.19.2  # CoreML quantization
+# tensorflow>=2.4.1  # TFLite export
+# tensorflowjs>=3.9.0  # TF.js export
+# openvino-dev  # OpenVINO export
+
+# Extras --------------------------------------
+# ipython  # interactive notebook  # 这个我觉得不需要 by xxk
+psutil  # 用于获取系统资源使用情况，如 CPU 使用率、内存占用、磁盘 I/O 等，可用于程序性能监控和资源管理。
+thop  # 用于计算深度学习模型的浮点运算量（FLOPs ）和参数数量，帮助评估模型的复杂度和计算成本。
+
+# albumentations>=1.0.3
+# pycocotools>=2.0  # COCO mAP
+# roboflow
+
+
+
+
+
+
