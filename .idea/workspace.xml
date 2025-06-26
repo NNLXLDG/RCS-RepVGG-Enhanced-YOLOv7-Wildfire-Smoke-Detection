@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="17d05ef1-5e5f-4fa9-904c-f790dfad74f2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/r50-csp.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/x50-csp.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-csp-x.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-csp.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-d6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-e6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-p6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolor-w6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolov3-spp.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolov3.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/baseline/yolov4-csp.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-d6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-e6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-e6e.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-tiny-silu.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-tiny.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7-w6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/deploy/yolov7x.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7-d6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7-e6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7-e6e.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7-tiny.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7-w6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/cfg/training/yolov7x.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/coco.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/hyp.scratch.custom.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/hyp.scratch.p5.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/hyp.scratch.p6.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/hyp.scratch.tiny.yaml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/bus.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/horses.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/image1.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/image2.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/image3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp3/zidane.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/bus.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/horses.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/image1.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/image2.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/image3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp4/zidane.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/bus.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/horses.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/image1.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/image2.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/image3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp5/zidane.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/bus.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/horses.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/image1.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/image2.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/image3.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/runs/detect/exp6/zidane.jpg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scripts/get_coco.sh" beforeDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 6
+}]]></component>
+  <component name="ProjectId" id="2z38RgIgL3Fba3vKT7ZjUz63UMg" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "Run__basic__Yolo__v7",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-6a121458b545-JavaScript-PY-251.25410.122" />
+        <option value="bundled-python-sdk-880ecab49056-36ea0e71a18c-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.25410.122" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="17d05ef1-5e5f-4fa9-904c-f790dfad74f2" name="Changes" comment="" />
+      <created>1750948390258</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1750948390258</updated>
+      <workItem from="1750948391486" duration="2000" />
+    </task>
+    <servers />
+  </component>
+</project>
