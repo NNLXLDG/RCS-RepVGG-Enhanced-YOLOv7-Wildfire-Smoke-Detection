@@ -32,16 +32,16 @@
 ### 训练
 ```bash
 # 基础版本
-python train.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7.yaml --batch-size 4 --epochs 100
+python train.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7.yaml --batch-size 4 --epochs 100
 
 # RepVGG版本
-python train-repvgg.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-repvgg.yaml --batch-size 4 --epochs 100
+python train-repvgg.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-repvgg.yaml --batch-size 4 --epochs 100
 
 # RCSOSA版本
-python train-rcsosa.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-rcsosa.yaml --batch-size 4 --epochs 100
+python train-rcsosa.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-rcsosa.yaml --batch-size 4 --epochs 100
 
 # RepVGG+RCSOSA版本
-python train-repvgg-rcsosa.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-repvgg-rcsosa.yaml --batch-size 4 --epochs 100
+python train-repvgg-rcsosa.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-repvgg-rcsosa.yaml --batch-size 4 --epochs 100
 ```
 
 ### 检测
@@ -66,7 +66,7 @@ python compare_versions.py --versions yolov7 yolov7-repvgg --epochs 30
 ```
 ├── cfg/training/          # 四个版本的配置文件
 ├── hyperparameters/       # 训练超参数配置（hyp.scratch.p5.yaml）
-├── datasets_smokefire/    # 数据集
+├── datasets/    # 数据集
 ├── models/                # 模型定义
 ├── utils/                 # 工具函数
 ├── runs/                  # 训练和检测输出结果

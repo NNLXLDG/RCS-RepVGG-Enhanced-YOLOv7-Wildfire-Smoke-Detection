@@ -39,7 +39,7 @@ VERSIONS = {
 }
 
 class YOLOv7Comparator:
-    def __init__(self, data_path='datasets_smokefire/smokefire.yaml', 
+    def __init__(self, data_path='datasets/smokefire.yaml', 
                  epochs=50, batch_size=4, img_size=640):
         self.data_path = data_path
         self.epochs = epochs
@@ -232,7 +232,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='YOLOv7四版本对比实验')
-    parser.add_argument('--data', type=str, default='datasets_smokefire/smokefire.yaml', 
+    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', 
                         help='数据集配置文件路径')
     parser.add_argument('--epochs', type=int, default=50, help='训练轮数')
     parser.add_argument('--batch-size', type=int, default=4, help='批次大小')

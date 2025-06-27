@@ -528,7 +528,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7-repvgg.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='datasets_smokefire/smokefire.yaml', help='data.yaml path')
+    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=4, help='批次大小（CPU训练推荐使用较小值）')

@@ -4,22 +4,22 @@
 
 ### 基础版本
 ```bash
-python train.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
+python train.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
 ```
 
 ### RepVGG版本
 ```bash
-python train-repvgg.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-repvgg.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
+python train-repvgg.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-repvgg.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
 ```
 
 ### RCSOSA版本
 ```bash
-python train-rcsosa.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-rcsosa.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
+python train-rcsosa.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-rcsosa.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
 ```
 
 ### RepVGG+RCSOSA版本
 ```bash
-python train-repvgg-rcsosa.py --data datasets_smokefire/smokefire.yaml --cfg cfg/training/yolov7-repvgg-rcsosa.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
+python train-repvgg-rcsosa.py --data datasets/smokefire.yaml --cfg cfg/training/yolov7-repvgg-rcsosa.yaml --epochs 50 --batch-size 4 --device cpu --workers 1
 ```
 
 ## 2. 自动对比所有版本
@@ -30,7 +30,7 @@ python compare_versions.py --epochs 50 --batch-size 4
 ## 3. 测试模型
 ```bash
 # 测试某个训练好的模型
-python test.py --data datasets_smokefire/smokefire.yaml --weights runs/train/yolov7/weights/best.pt --device cpu
+python test.py --data datasets/smokefire.yaml --weights runs/train/yolov7/weights/best.pt --device cpu
 ```
 
 ## 4. 检测图像

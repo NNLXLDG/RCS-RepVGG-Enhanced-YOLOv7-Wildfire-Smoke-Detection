@@ -1,6 +1,6 @@
 # train and val data as 1) directory: path/images/, 2) file: path/images.txt, or 3) list: [path1/images/, path2/images/]
-train: datasets_smokefire/train/images # 592 images
-val: datasets_smokefire/val/images # 148 images
+train: datasets/train/images # 592 images
+val: datasets/val/images # 148 images
 
 # number of classes
 nc: 2

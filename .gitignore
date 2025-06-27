@@ -36,7 +36,7 @@ Thumbs.db
 *.temp
 
 # 数据集（如果太大）
-# datasets_smokefire/
+# datasets/
 
 # 比较结果
 comparison_results.json
