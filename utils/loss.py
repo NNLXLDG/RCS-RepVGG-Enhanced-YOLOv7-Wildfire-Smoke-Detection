@@ -474,6 +474,14 @@ class ComputeLoss:
                 # Classification
                 if self.nc > 1:  # cls loss (only if multiple classes)
                     t = torch.full_like(ps[:, 5:], self.cn, device=device)  # targets
+                    # Debug: check for out-of-bounds class indices
+                    max_class_idx = tcls[i].max().item() if len(tcls[i]) > 0 else -1
+                    if max_class_idx >= t.shape[1]:
+                        print(f"ERROR: Class index {max_class_idx} out of bounds for tensor shape {t.shape}")
+                        print(f"nc={self.nc}, tcls[{i}]={tcls[i]}")
+                        print(f"ps.shape={ps.shape}, t.shape={t.shape}")
+                        # Clamp invalid class indices
+                        tcls[i] = torch.clamp(tcls[i], 0, t.shape[1] - 1)
                     t[range(n), tcls[i]] = self.cp
                     #t[t==self.cp] = iou.detach().clamp(0).type(t.dtype)
                     lcls += self.BCEcls(ps[:, 5:], t)  # BCE
