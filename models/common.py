@@ -1654,8 +1654,6 @@ class STCSPC(nn.Module):
         return self.cv4(torch.cat((y1, y2), dim=1))
 
 ##### end of swin transformer #####   
-
-
 ##### swin transformer v2 ##### 
   
 class WindowAttention_v2(nn.Module):
