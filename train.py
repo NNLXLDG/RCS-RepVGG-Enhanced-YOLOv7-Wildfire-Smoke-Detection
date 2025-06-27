@@ -682,7 +682,7 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default='', help='预训练权重路径')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='模型配置文件路径')
     parser.add_argument('--data', type=str, default='datasets_smokefire/smokefire.yaml', help='数据集配置文件路径')
-    parser.add_argument('--hyp', type=str, default='data/hyp.scratch.p5.yaml', help='超参数配置文件路径')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='超参数配置文件路径')
     
     # 训练参数
     parser.add_argument('--epochs', type=int, default=50, help='训练轮数（CPU训练推荐使用较小值）')

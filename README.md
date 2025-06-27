@@ -65,7 +65,7 @@ python compare_versions.py --versions yolov7 yolov7-repvgg --epochs 30
 ## 项目结构
 ```
 ├── cfg/training/          # 四个版本的配置文件
-├── data/                  # 超参数配置
+├── hyperparameters/       # 训练超参数配置（hyp.scratch.p5.yaml）
 ├── datasets_smokefire/    # 数据集
 ├── models/                # 模型定义
 ├── utils/                 # 工具函数
@@ -75,8 +75,10 @@ python compare_versions.py --versions yolov7 yolov7-repvgg --epochs 30
 ├── train*.py              # 四个训练脚本
 ├── detect*.py             # 四个检测脚本
 ├── test.py                # 测试脚本
-├── export_simple.py       # 简化版模型导出
-└── compare_versions.py    # 四版本自动对比脚本
+├── compare_versions.py    # 四版本自动对比脚本
+├── README.md              # 项目说明
+├── QUICK_START.md         # 快速开始指南
+└── requirements.txt       # 依赖包列表
 ```
 
 ## runs文件夹说明
@@ -93,21 +95,6 @@ python compare_versions.py --versions yolov7 yolov7-repvgg --epochs 30
 ### runs/detect/
 每次检测会创建一个实验文件夹，保存检测结果图片。
 
-## 🔧 配置验证
-
-在开始训练前，建议运行配置验证脚本确保所有设置正确：
-
-```bash
-python validate_config.py
-```
-
-此脚本会检查：
-- ✅ 配置文件一致性（类别数、锚框等）
-- ✅ 数据集完整性（图片和标签匹配）
-- ✅ 训练脚本存在性
-- ✅ 超参数合理性
-- ✅ PyTorch兼容性
-
 ## 注意事项
 - 所有版本都已针对Apple Silicon Mac CPU训练进行优化
 - 建议使用相同的超参数进行公平比较
@@ -115,4 +102,17 @@ python validate_config.py
 - 使用`compare_versions.py`可以自动依次训练四个版本并生成对比报告
 - 项目已精简，只保留核心文件和必要的训练输出
 - **推荐配置**: epochs=50, batch-size=4, workers=1 (适合CPU训练)
-- 使用`python validate_config.py`检查项目配置的完整性和一致性
+- 数据集已优化为野火烟雾检测专用（2类：fire, smoke）
+
+
+
+
+
+
+
+
+
+
+
+
+
