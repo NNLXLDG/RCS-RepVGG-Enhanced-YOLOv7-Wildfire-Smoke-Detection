@@ -37,7 +37,7 @@ def test(data,
          plots=True,
          wandb_logger=None,
          compute_loss=None,
-         half_precision=True,
+         half_precision=False,  # CPU不支持半精度
          trace=False,
          is_coco=False,
          v5_metric=False):
@@ -55,12 +55,19 @@ def test(data,
         (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
         # Load model
-        model = attempt_load(weights, map_location=device)  # load FP32 model
-        gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-        imgsz = check_img_size(imgsz, s=gs)  # check img_size
-        
-        if trace:
-            model = TracedModel(model, device, imgsz)
+    model = attempt_load(weights, map_location=device)  # load FP32 model
+    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    
+    # Check if model output classes match dataset classes
+    model_nc = model.model[-1].nc if hasattr(model.model[-1], 'nc') else None
+    if model_nc is not None and model_nc != nc:
+        print(f"Warning: Model output classes ({model_nc}) != dataset classes ({nc})")
+        print(f"This might cause class index out of bounds errors")
+    
+    imgsz = check_img_size(imgsz, s=gs)  # check img_size
+    
+    if trace:
+        model = TracedModel(model, device, imgsz)
 
     # Half
     half = device.type != 'cpu' and half_precision  # half precision only supported on CUDA
@@ -133,6 +140,19 @@ def test(data,
             path = Path(paths[si])
             seen += 1
 
+            if len(pred) == 0:
+                if nl:
+                    stats.append((torch.zeros(0, niou, dtype=torch.bool), torch.Tensor(), torch.Tensor(), tcls))
+                continue
+
+            # Filter predictions with invalid class indices
+            if len(pred) > 0:
+                valid_class_mask = pred[:, 5] < nc  # class indices should be < nc
+                if not valid_class_mask.all():
+                    invalid_classes = pred[~valid_class_mask, 5].unique()
+                    print(f"Warning: Filtering out predictions with invalid class indices: {invalid_classes.tolist()} (nc={nc})")
+                    pred = pred[valid_class_mask]
+            
             if len(pred) == 0:
                 if nl:
                     stats.append((torch.zeros(0, niou, dtype=torch.bool), torch.Tensor(), torch.Tensor(), tcls))
@@ -234,8 +254,13 @@ def test(data,
 
     # Print results per class
     if (verbose or (nc < 50 and not training)) and nc > 1 and len(stats):
+        print(f"Debug: ap_class={ap_class}, nc={nc}, len(names)={len(names)}")
         for i, c in enumerate(ap_class):
-            print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
+            # 确保类别索引在有效范围内
+            if c < len(names) and c < len(nt):
+                print(pf % (names[c], seen, nt[c], p[i], r[i], ap50[i], ap[i]))
+            else:
+                print(f"Warning: Class index {c} is out of bounds (names len={len(names)}, nt len={len(nt)}). Skipping.")
 
     # Print speeds
     t = tuple(x / seen * 1E3 for x in (t0, t1, t0 + t1)) + (imgsz, imgsz, batch_size)  # tuple
@@ -281,9 +306,24 @@ def test(data,
     if not training:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         print(f"Results saved to {save_dir}{s}")
+    
+    # 创建 mAP 数组并安全地分配值
     maps = np.zeros(nc) + map
-    for i, c in enumerate(ap_class):
-        maps[c] = ap[i]
+    
+    # 添加调试信息并安全地处理索引
+    if len(stats) and stats[0].any():
+        print(f"Debug: nc={nc}, ap_class={ap_class}, len(ap)={len(ap) if 'ap' in locals() else 'undefined'}")
+        print(f"Debug: ap_class max={ap_class.max() if len(ap_class) > 0 else 'empty'}, nc={nc}")
+        
+        for i, c in enumerate(ap_class):
+            if c < nc:  # 确保索引在有效范围内
+                maps[c] = ap[i]
+            else:
+                print(f"Warning: Class index {c} is out of bounds for nc={nc}. Skipping.")
+                print(f"Warning: This suggests the model is predicting class {c} but dataset only has {nc} classes (0-{nc-1})")
+    else:
+        print("Debug: No valid statistics found, using default mAP values")
+    
     return (mp, mr, map50, map, *(loss.cpu() / len(dataloader)).tolist()), maps, t
 
 
