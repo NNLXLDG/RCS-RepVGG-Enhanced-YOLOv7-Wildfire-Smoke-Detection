@@ -55,7 +55,6 @@ from utils.google_utils import attempt_download     # Google云下载工具
 from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
-from utils.wandb_logging.wandb_utils import WandbLogger, check_wandb_resume  # Weights & Biases日志
 
 # 创建日志记录器
 logger = logging.getLogger(__name__)
@@ -104,23 +103,9 @@ def train(hyp, opt, device, tb_writer=None):
         data_dict = yaml.load(f, Loader=yaml.SafeLoader)  # 数据集配置字典
     is_coco = opt.data.endswith('coco.yaml')  # 判断是否为COCO数据集
 
-    # 日志记录配置 - 在检查数据集之前进行，可能会更新data_dict
-    loggers = {'wandb': None}  # 日志记录器字典
+    # 日志记录配置 - 简化版本，不使用wandb
     if rank in [-1, 0]:  # 只在主进程中初始化日志
-        opt.hyp = hyp  # 添加超参数到选项中
-        
-        # 尝试从预训练权重中获取wandb运行ID（用于恢复训练）
-        run_id = torch.load(weights, map_location=device, weights_only=False).get('wandb_id') \
-            if weights.endswith('.pt') and os.path.isfile(weights) else None
-        
-        # 初始化Weights & Biases日志记录器
-        wandb_logger = WandbLogger(opt, Path(opt.save_dir).stem, run_id, data_dict)
-        loggers['wandb'] = wandb_logger.wandb
-        data_dict = wandb_logger.data_dict
-        
-        # 如果使用wandb，可能会更新权重路径、训练轮数和超参数（恢复训练时）
-        if wandb_logger.wandb:
-            weights, epochs, hyp = opt.weights, opt.epochs, opt.hyp
+        logger.info("开始训练 - 使用TensorBoard进行日志记录")
 
     # 数据集类别配置
     nc = 1 if opt.single_cls else int(data_dict['nc'])  # 类别数量
@@ -530,9 +515,6 @@ def train(hyp, opt, device, tb_writer=None):
                     # if tb_writer:
                     #     tb_writer.add_image(f, result, dataformats='HWC', global_step=epoch)
                     #     tb_writer.add_graph(torch.jit.trace(model, imgs, strict=False), [])
-                elif plots and ni == 10 and wandb_logger.wandb:
-                    wandb_logger.log({"Mosaics": [wandb_logger.wandb.Image(str(x), caption=x.name) for x in
-                                                  save_dir.glob('train*.jpg') if x.exists()]})
 
             # end batch ------------------------------------------------------------------------------------------------
         # end epoch ----------------------------------------------------------------------------------------------------
@@ -543,11 +525,10 @@ def train(hyp, opt, device, tb_writer=None):
 
         # DDP process 0 or single-GPU
         if rank in [-1, 0]:
-            # mAP
+            # mAP计算
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'gr', 'names', 'stride', 'class_weights'])
             final_epoch = epoch + 1 == epochs
-            if not opt.notest or final_epoch:  # Calculate mAP
-                wandb_logger.current_epoch = epoch + 1
+            if not opt.notest or final_epoch:  # 计算mAP
                 try:
                     results, maps, times = test.test(data_dict,
                                                      batch_size=batch_size * 2,
@@ -558,7 +539,6 @@ def train(hyp, opt, device, tb_writer=None):
                                                      save_dir=save_dir,
                                                      verbose=nc < 50 and final_epoch,
                                                      plots=plots and final_epoch,
-                                                     wandb_logger=wandb_logger,
                                                      compute_loss=compute_loss,
                                                      is_coco=is_coco,
                                                      v5_metric=opt.v5_metric)
@@ -575,7 +555,7 @@ def train(hyp, opt, device, tb_writer=None):
             if len(opt.name) and opt.bucket:
                 os.system('gsutil cp %s gs://%s/results/results%s.txt' % (results_file, opt.bucket, opt.name))
 
-            # Log
+            # 日志记录
             tags = ['train/box_loss', 'train/obj_loss', 'train/cls_loss',  # train loss
                     'metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95',
                     'val/box_loss', 'val/obj_loss', 'val/cls_loss',  # val loss
@@ -583,16 +563,13 @@ def train(hyp, opt, device, tb_writer=None):
             for x, tag in zip(list(mloss[:-1]) + list(results) + lr, tags):
                 if tb_writer:
                     tb_writer.add_scalar(tag, x, epoch)  # tensorboard
-                if wandb_logger.wandb:
-                    wandb_logger.log({tag: x})  # W&B
 
-            # Update best mAP
+            # 更新最佳mAP
             fi = fitness(np.array(results).reshape(1, -1))  # weighted combination of [P, R, mAP@.5, mAP@.5-.95]
             if fi > best_fitness:
                 best_fitness = fi
-            wandb_logger.end_epoch(best_result=best_fitness == fi)
 
-            # Save model
+            # 保存模型
             if (not opt.nosave) or (final_epoch and not opt.evolve):  # if save
                 ckpt = {'epoch': epoch,
                         'best_fitness': best_fitness,
@@ -600,10 +577,9 @@ def train(hyp, opt, device, tb_writer=None):
                         'model': deepcopy(model.module if is_parallel(model) else model).half(),
                         'ema': deepcopy(ema.ema).half(),
                         'updates': ema.updates,
-                        'optimizer': optimizer.state_dict(),
-                        'wandb_id': wandb_logger.wandb_run.id if wandb_logger.wandb else None}
+                        'optimizer': optimizer.state_dict()}
 
-                # Save last, best and delete
+                # 保存last, best并删除旧文件
                 torch.save(ckpt, last)
                 if best_fitness == fi:
                     torch.save(ckpt, best)
@@ -615,23 +591,16 @@ def train(hyp, opt, device, tb_writer=None):
                     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
                 elif epoch >= (epochs-5):
                     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                if wandb_logger.wandb:
-                    if ((epoch + 1) % opt.save_period == 0 and not final_epoch) and opt.save_period != -1:
-                        wandb_logger.log_model(
-                            last.parent, opt, epoch, fi, best_model=best_fitness == fi)
                 del ckpt
 
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
     if rank in [-1, 0]:
-        # Plots
+        # 绘制结果图表
         if plots:
             plot_results(save_dir=save_dir)  # save as results.png
-            if wandb_logger.wandb:
-                files = ['results.png', 'confusion_matrix.png', *[f'{x}_curve.png' for x in ('F1', 'PR', 'P', 'R')]]
-                wandb_logger.log({"Results": [wandb_logger.wandb.Image(str(save_dir / f), caption=f) for f in files
-                                              if (save_dir / f).exists()]})
-        # Test best.pt
+        
+        # 测试最佳模型
         logger.info('%g epochs completed in %.3f hours.\n' % (epoch - start_epoch + 1, (time.time() - t0) / 3600))
         if opt.data.endswith('coco.yaml') and nc == 80:  # if COCO
             for m in (last, best) if best.exists() else (last):  # speed, mAP tests
@@ -649,18 +618,13 @@ def train(hyp, opt, device, tb_writer=None):
                                           is_coco=is_coco,
                                           v5_metric=opt.v5_metric)
 
-        # Strip optimizers
+        # 优化器剥离
         final = best if best.exists() else last  # final model
         for f in last, best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
         if opt.bucket:
             os.system(f'gsutil cp {final} gs://{opt.bucket}/weights')  # upload
-        if wandb_logger.wandb and not opt.evolve:  # Log the stripped model
-            wandb_logger.wandb.log_artifact(str(final), type='model',
-                                            name='run_' + wandb_logger.wandb_run.id + '_model',
-                                            aliases=['last', 'best', 'stripped'])
-        wandb_logger.finish_run()
     else:
         # 分布式训练清理
         dist.destroy_process_group()
@@ -707,18 +671,11 @@ if __name__ == '__main__':
     
     # 输出和日志参数
     parser.add_argument('--project', default='runs/train', help='保存到project/name目录')
-    parser.add_argument('--entity', default=None, help='Weights & Biases实体')
     parser.add_argument('--name', default='yolov7', help='保存到project/name目录')
     parser.add_argument('--exist-ok', action='store_true', help='已存在的project/name目录可用，不递增')
     parser.add_argument('--quad', action='store_true', help='四倍数据加载器')
     parser.add_argument('--linear-lr', action='store_true', help='线性学习率')
     parser.add_argument('--label-smoothing', type=float, default=0.0, help='标签平滑epsilon值')
-    
-    # Weights & Biases相关参数
-    parser.add_argument('--upload_dataset', action='store_true', help='将数据集上传为W&B工件表')
-    parser.add_argument('--bbox_interval', type=int, default=-1, help='设置W&B边界框图像日志间隔')
-    parser.add_argument('--save_period', type=int, default=-1, help='每"save_period"个epoch记录模型')
-    parser.add_argument('--artifact_alias', type=str, default="latest", help='要使用的数据集工件版本')
     
     # 模型相关参数
     parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='冻结层：yolov7骨干=50，前3层=0 1 2')
@@ -736,10 +693,9 @@ if __name__ == '__main__':
     #    check_git_status()
     #    check_requirements()
 
-    # Resume
-    wandb_run = check_wandb_resume(opt)
-    if opt.resume and not wandb_run:  # resume an interrupted run
-        ckpt = opt.resume if isinstance(opt.resume, str) else get_latest_run()  # specified or most recent path
+    # 恢复训练
+    if opt.resume and not isinstance(opt.resume, str):  # resume an interrupted run
+        ckpt = get_latest_run()  # 获取最新的训练运行
         assert os.path.isfile(ckpt), 'ERROR: --resume checkpoint does not exist'
         apriori = opt.global_rank, opt.local_rank
         with open(Path(ckpt).parent.parent / 'opt.yaml') as f:
