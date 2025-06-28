@@ -1,6 +1,6 @@
-train: ../train/images
-val: ../valid/images
-test: ../test/images
+train: RCS-Yolo\datasets_smokefire\train\images
+val: RCS-Yolo\datasets_smokefire\valid\images
+test: RCS-Yolo\datasets_smokefire\test\images
 
 nc: 2
 names: ['smoke', 'fire']
