@@ -1,9 +1,3 @@
-"""
-YOLOv7 训练脚本
-用于训练YOLOv7目标检测模型，支持单机单卡、多卡分布式训练
-本版本已针对Apple Silicon Mac CPU训练进行优化
-"""
-
 # 标准库导入
 import argparse          # 命令行参数解析
 import logging          # 日志记录
@@ -540,7 +534,6 @@ def train(hyp, opt, device, tb_writer=None):
                                                      verbose=nc < 50 and final_epoch,
                                                      plots=plots and final_epoch,
                                                      compute_loss=compute_loss,
-                                                     is_coco=is_coco,
                                                      v5_metric=opt.v5_metric)
                 except Exception as e:
                     logger.warning(f"测试阶段出现错误，将使用默认值继续训练: {e}")
@@ -615,7 +608,6 @@ def train(hyp, opt, device, tb_writer=None):
                                           save_dir=save_dir,
                                           save_json=True,
                                           plots=False,
-                                          is_coco=is_coco,
                                           v5_metric=opt.v5_metric)
 
         # 优化器剥离

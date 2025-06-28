@@ -312,10 +312,8 @@ def plot_labels(labels, names=(), save_dir=Path(''), loggers=None):
     matplotlib.use('Agg')
     plt.close()
 
-    # loggers
-    for k, v in loggers.items() or {}:
-        if k == 'wandb' and v:
-            v.log({"Labels": [v.Image(str(x), caption=x.name) for x in save_dir.glob('*labels*.jpg')]}, commit=False)
+    # loggers - wandb support removed
+    # Legacy wandb logging code removed for simplification
 
 
 def plot_evolution(yaml_file='hyperparameters/hyp.finetune.yaml'):  # from utils.plots import *; plot_evolution()
