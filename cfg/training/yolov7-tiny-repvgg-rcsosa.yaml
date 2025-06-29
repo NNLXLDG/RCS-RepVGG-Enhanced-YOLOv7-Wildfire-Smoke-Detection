@@ -1,0 +1,70 @@
+# parameters
+nc: 80  # number of classes
+depth_multiple: 1.0  # model depth multiple
+width_multiple: 1.0  # layer channel multiple
+
+# anchors
+anchors:
+  - [10,13, 16,30, 33,23]  # P3/8
+  - [30,61, 62,45, 59,119]  # P4/16
+  - [116,90, 156,198, 373,326]  # P5/32
+
+# yolov7-tiny backbone with RepVGG and RCS-OSA
+backbone:
+  # [from, number, module, args]
+  [[-1, 1, RepVGG, [32, 3, 2]],  # 0-P1/2  
+   [-1, 1, RepVGG, [64, 3, 2]],  # 1-P2/4    
+   [-1, 2, RCSOSA, [64]],  # 2-3
+   
+   [-1, 1, MP, []],  # 4-P3/8
+   [-1, 2, RCSOSA, [128]],  # 5-6
+   
+   [-1, 1, MP, []],  # 7-P4/16
+   [-1, 2, RCSOSA, [256]],  # 8-9
+   
+   [-1, 1, MP, []],  # 10-P5/32
+   [-1, 2, RCSOSA, [512]],  # 11-12
+  ]
+
+# yolov7-tiny head with RepVGG and RCS-OSA
+head:
+  [[-1, 1, Conv, [256, 1, 1, None, 1, nn.LeakyReLU(0.1)]],
+   [-2, 1, Conv, [256, 1, 1, None, 1, nn.LeakyReLU(0.1)]],
+   [-1, 1, SP, [5]],
+   [-2, 1, SP, [9]],
+   [-3, 1, SP, [13]],
+   [[-1, -2, -3, -4], 1, Concat, [1]],
+   [-1, 1, Conv, [256, 1, 1, None, 1, nn.LeakyReLU(0.1)]],
+   [[-1, -7], 1, Concat, [1]],
+   [-1, 1, Conv, [256, 1, 1, None, 1, nn.LeakyReLU(0.1)]],  # 20
+  
+   [-1, 1, Conv, [128, 1, 1, None, 1, nn.LeakyReLU(0.1)]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [9, 1, Conv, [128, 1, 1, None, 1, nn.LeakyReLU(0.1)]], # route backbone P4
+   [[-1, -2], 1, Concat, [1]],
+   
+   [-1, 2, RCSOSA, [128]],  # 24-25
+  
+   [-1, 1, Conv, [64, 1, 1, None, 1, nn.LeakyReLU(0.1)]],
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [6, 1, Conv, [64, 1, 1, None, 1, nn.LeakyReLU(0.1)]], # route backbone P3
+   [[-1, -2], 1, Concat, [1]],
+   
+   [-1, 2, RCSOSA, [64]],  # 29-30
+   
+   [-1, 1, RepVGG, [128, 3, 2]],
+   [[-1, 25], 1, Concat, [1]],
+   
+   [-1, 2, RCSOSA, [128]],  # 33-34
+   
+   [-1, 1, RepVGG, [256, 3, 2]],
+   [[-1, 20], 1, Concat, [1]],
+   
+   [-1, 2, RCSOSA, [256]],  # 37-38
+      
+   [30, 1, RepVGG, [128, 3, 1]],
+   [34, 1, RepVGG, [256, 3, 1]],
+   [38, 1, RepVGG, [512, 3, 1]],
+
+   [[39,40,41], 1, Detect, [nc, anchors]],   # Detect(P3, P4, P5)
+  ]

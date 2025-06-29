@@ -35,8 +35,47 @@ Thumbs.db
 *.tmp
 *.temp
 
-# 数据集（如果太大）
-# datasets/
+# 数据集目录和文件
+datasets/
+data/
+dataset/
+datasets_*/
+*_dataset/
+*_datasets/
+
+# 数据集压缩文件
+*.dataset
+datasets.zip
+data.zip
+dataset.tar.gz
+data.tar.gz
+
+# 数据集配置文件的备份
+*.yaml.bak
+*.yaml.backup
+
+# 数据集缓存文件
+*.cache
+labels.cache
+images.cache
+
+# 其他数据相关文件
+annotations/
+images/
+labels/
+train/
+valid/
+test/
+val/
+
+# COCO和YOLO数据集相关
+coco/
+coco128/
+yolo_data/
+
+# 模型训练相关的临时文件
+*.txt.backup
+*.names.backup
 
 # 比较结果
 comparison_results.json

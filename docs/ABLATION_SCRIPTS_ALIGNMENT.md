@@ -15,6 +15,8 @@
 - ✅ 修复fitness格式化问题，避免numpy格式化错误
 - ✅ 更新backward/optimize逻辑，去除scaler依赖
 - ✅ 英文化参数描述和输出消息
+- ✅ 修复test.test()调用，移除未定义的is_coco参数
+- ✅ 添加验证异常处理和美化的验证结果显示
 - ✅ 配置文件: `cfg/training/yolov7-repvgg.yaml`
 - ✅ 项目名称: `yolov7-repvgg`
 
@@ -25,6 +27,8 @@
 - ✅ 修复目录设置逻辑，统一目录管理
 - ✅ 修复backward/optimize逻辑，适配CPU训练
 - ✅ 英文化参数描述
+- ✅ 修复test.test()调用，移除未定义的is_coco参数
+- ✅ 添加验证异常处理和美化的验证结果显示
 - ✅ 配置文件: `cfg/training/yolov7-rcsosa.yaml`
 - ✅ 项目名称: `yolov7-rcsosa`
 
@@ -35,6 +39,8 @@
 - ✅ 修复目录设置逻辑，统一目录管理
 - ✅ 修复backward/optimize逻辑，适配CPU训练
 - ✅ 英文化参数描述
+- ✅ 修复test.test()调用，移除未定义的is_coco参数
+- ✅ 添加验证异常处理和美化的验证结果显示
 - ✅ 配置文件: `cfg/training/yolov7-repvgg-rcsosa.yaml`
 - ✅ 项目名称: `yolov7-repvgg-rcsosa`
 
@@ -61,7 +67,22 @@ def print_training_info(save_dir, model_cfg, dataset_cfg, epochs, batch_size):
 ### 3. 统一的目录管理
 ```python
 # 使用统一的实验目录管理 - 对齐train.py的目录创建逻辑
-opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)
+import __main__
+script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-repvgg.py'
+from utils.experiment_manager import setup_training_directory
+opt.save_dir = setup_training_directory(opt, script_path)
+```
+
+### 4. 统一的目录命名规范
+所有训练脚本现在使用相同的目录命名格式：
+```
+<模型名>_[变体]_<数据集>_ep<轮数>_bs<批次>_<时间戳>
+
+示例:
+runs/train/yolov7_smokefire_ep50_bs4_20250629_143256/
+runs/train/yolov7-repvgg_repvgg_smokefire_ep50_bs4_20250629_143257/
+runs/train/yolov7-rcsosa_rcsosa_smokefire_ep50_bs4_20250629_143258/
+runs/train/yolov7-repvgg-rcsosa_repvgg-rcsosa_smokefire_ep50_bs4_20250629_143259/
 ```
 
 ### 4. 统一的CPU训练适配
@@ -83,6 +104,41 @@ if ni % accumulate == 0:
 fi = fitness(np.array(results).reshape(1, -1))
 if fi > best_fitness:
     best_fitness = fi.item()  # Convert to scalar to avoid formatting issues
+```
+
+### 6. 统一的验证异常处理
+```python
+if not opt.notest or final_epoch:  # Calculate mAP
+    try:
+        results, maps, times = test.test(data_dict,
+                                         batch_size=batch_size * 2,
+                                         imgsz=imgsz_test,
+                                         model=ema.ema,
+                                         single_cls=opt.single_cls,
+                                         dataloader=testloader,
+                                         save_dir=save_dir,
+                                         verbose=nc < 50 and final_epoch,
+                                         plots=plots and final_epoch,
+                                         compute_loss=compute_loss,
+                                         v5_metric=opt.v5_metric)
+        
+        # Beautiful validation results display
+        val_separator = "┈" * 80
+        logger.info(f"\n{val_separator}")
+        logger.info(f"🔍 Epoch {epoch+1} Validation Results")
+        logger.info(f"{val_separator}")
+        logger.info(f"┌─ 📊 Accuracy Metrics")
+        logger.info(f"├─ 🎯 Precision:     {results[0]:.4f}")
+        logger.info(f"├─ 🔄 Recall:        {results[1]:.4f}")
+        logger.info(f"├─ 📈 mAP@0.5:      {results[2]:.4f}")
+        logger.info(f"└─ 📊 mAP@0.5:0.95: {results[3]:.4f}")
+        logger.info(f"{val_separator}\n")
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Validation failed for epoch {epoch+1}: {str(e)}")
+        logger.warning("🔄 Continuing training without validation metrics...")
+        results = (0, 0, 0, 0, 0, 0, 0)  # Default results if validation fails
+        maps = np.zeros(nc)
 ```
 
 ## 消融实验对比准备就绪

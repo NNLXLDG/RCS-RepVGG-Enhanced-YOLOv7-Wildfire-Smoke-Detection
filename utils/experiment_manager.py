@@ -274,6 +274,8 @@ def get_script_variant(script_path):
         return 'repvgg'
     elif 'rcsosa' in script_name:
         return 'rcsosa'
+    elif 'tiny' in script_name:
+        return 'tiny'
     else:
         return ''
 

@@ -456,18 +456,36 @@ def train(hyp, opt, device, tb_writer=None):
             ema.update_attr(model, include=['yaml', 'nc', 'hyp', 'gr', 'names', 'stride', 'class_weights'])
             final_epoch = epoch + 1 == epochs
             if not opt.notest or final_epoch:  # Calculate mAP
-                results, maps, times = test.test(data_dict,
-                                                 batch_size=batch_size * 2,
-                                                 imgsz=imgsz_test,
-                                                 model=ema.ema,
-                                                 single_cls=opt.single_cls,
-                                                 dataloader=testloader,
-                                                 save_dir=save_dir,
-                                                 verbose=nc < 50 and final_epoch,
-                                                 plots=plots and final_epoch,
-                                                 compute_loss=compute_loss,
-                                                 is_coco=is_coco,
-                                                 v5_metric=opt.v5_metric)
+                try:
+                    results, maps, times = test.test(data_dict,
+                                                     batch_size=batch_size * 2,
+                                                     imgsz=imgsz_test,
+                                                     model=ema.ema,
+                                                     single_cls=opt.single_cls,
+                                                     dataloader=testloader,
+                                                     save_dir=save_dir,
+                                                     verbose=nc < 50 and final_epoch,
+                                                     plots=plots and final_epoch,
+                                                     compute_loss=compute_loss,
+                                                     v5_metric=opt.v5_metric)
+                    
+                    # Optimize validation result display - beautiful formatted output
+                    val_separator = "┈" * 80
+                    logger.info(f"\n{val_separator}")
+                    logger.info(f"🔍 Epoch {epoch+1} Validation Results")
+                    logger.info(f"{val_separator}")
+                    logger.info(f"┌─ 📊 Accuracy Metrics")
+                    logger.info(f"├─ 🎯 Precision:     {results[0]:.4f}")
+                    logger.info(f"├─ 🔄 Recall:        {results[1]:.4f}")
+                    logger.info(f"├─ 📈 mAP@0.5:      {results[2]:.4f}")
+                    logger.info(f"└─ 📊 mAP@0.5:0.95: {results[3]:.4f}")
+                    logger.info(f"{val_separator}\n")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ Validation failed for epoch {epoch+1}: {str(e)}")
+                    logger.warning("🔄 Continuing training without validation metrics...")
+                    results = (0, 0, 0, 0, 0, 0, 0)  # Default results if validation fails
+                    maps = np.zeros(nc)
 
             # Write
             with open(results_file, 'a') as f:
@@ -544,7 +562,6 @@ def train(hyp, opt, device, tb_writer=None):
                                           save_dir=save_dir,
                                           save_json=True,
                                           plots=False,
-                                          is_coco=is_coco,
                                           v5_metric=opt.v5_metric)
 
         # Strip optimizers
@@ -580,7 +597,7 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=300)
-    parser.add_argument('--batch-size', type=int, default=4, help='batch size (recommend smaller values for CPU training)')
+    parser.add_argument('--batch-size', type=int, default=16, help='batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
@@ -598,8 +615,8 @@ if __name__ == '__main__':
     parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
     parser.add_argument('--workers', type=int, default=2, help='maximum number of dataloader workers')
-    parser.add_argument('--project', default='runs/train', help='save to project/name')
-    parser.add_argument('--name', default='yolov7-rcsosa', help='save to project/name')
+    parser.add_argument('--project', default='runs/train', help='Training results save root directory')
+    parser.add_argument('--name', default='', help='Experiment name suffix (deprecated, now uses auto-naming)')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--quad', action='store_true', help='quad dataloader')
     parser.add_argument('--linear-lr', action='store_true', help='linear LR')
@@ -633,7 +650,10 @@ if __name__ == '__main__':
         opt.name = 'evolve' if opt.evolve else opt.name
         
         # 使用统一的实验目录管理 - 对齐train.py的目录创建逻辑
-        opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
+        import __main__
+        script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-rcsosa.py'
+        from utils.experiment_manager import setup_training_directory
+        opt.save_dir = setup_training_directory(opt, script_path)
 
     # DDP mode
     opt.total_batch_size = opt.batch_size
