@@ -1,25 +1,25 @@
-import argparse          # 命令行参数解析
-import logging          # 日志记录
-import math             # 数学函数
-import os               # 操作系统接口
-import random           # 随机数生成
-import time             # 时间相关函数
-from copy import deepcopy    # 深拷贝
+import argparse          
+import logging          
+import math         
+import os           
+import random           
+import time             
+from copy import deepcopy    
 from datetime import datetime
-from pathlib import Path     # 路径操作
-from threading import Thread # 多线程
+from pathlib import Path     
+from threading import Thread 
 
-# 科学计算库
-import numpy as np      # 数值计算
 
-# PyTorch核心库
-import torch.distributed as dist        # 分布式训练
-import torch.nn as nn                  # 神经网络模块
-import torch.nn.functional as F        # 神经网络函数
-import torch.optim as optim           # 优化器
-import torch.optim.lr_scheduler as lr_scheduler  # 学习率调度器
-import torch.utils.data               # 数据加载工具
-import yaml                          # YAML配置文件解析
+import numpy as np      
+
+
+import torch.distributed as dist      
+import torch.nn as nn                  
+import torch.nn.functional as F       
+import torch.optim as optim           
+import torch.optim.lr_scheduler as lr_scheduler  
+import torch.utils.data          
+import yaml          
 
 # 自动混合精度训练 - 已为CPU训练禁用
 # AMP (Automatic Mixed Precision) 自动混合精度训练可以加速GPU训练并减少显存使用
@@ -32,19 +32,19 @@ import yaml                          # YAML配置文件解析
 #     from torch.cuda import amp
 
 # PyTorch扩展功能
-from torch.nn.parallel import DistributedDataParallel as DDP  # 分布式数据并行
-from torch.utils.tensorboard import SummaryWriter            # TensorBoard日志
-from tqdm import tqdm                                        # 进度条显示
+from torch.nn.parallel import DistributedDataParallel as DDP 
+from torch.utils.tensorboard import SummaryWriter     
+from tqdm import tqdm         
 
 # 项目模块导入
 import test  # 导入test.py用于每个epoch后计算mAP
-from models.experimental import attempt_load    # 实验性模型加载
-from models.yolo import Model                   # YOLO模型定义
-from utils.autoanchor import check_anchors      # 自动锚框检查
-from utils.datasets import create_dataloader    # 数据加载器创建
+from models.experimental import attempt_load    
+from models.yolo import Model                   
+from utils.autoanchor import check_anchors      
+from utils.datasets import create_dataloader    
 from utils.general import labels_to_class_weights, increment_path, labels_to_image_weights, init_seeds, \
     fitness, strip_optimizer, get_latest_run, check_dataset, check_file, check_git_status, check_img_size, \
-    check_requirements, print_mutation, set_logging, one_cycle, colorstr  # 通用工具函数
+    check_requirements, print_mutation, set_logging, one_cycle, colorstr  
 from utils.google_utils import attempt_download     # Google云下载工具
 from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
