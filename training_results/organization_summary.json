@@ -1,0 +1,27 @@
+{
+  "organized_at": "2025-06-28T14:20:57.868282",
+  "models": {
+    "yolov7": [
+      {
+        "name": "20250628_1053_epochs50_bs4",
+        "size_mb": 997.7577219009399,
+        "epochs": 50
+      },
+      {
+        "name": "20250628_0103_epochs2_bs4",
+        "size_mb": 997.7461128234863,
+        "epochs": 2
+      }
+    ]
+  },
+  "archived": [
+    "yolov7/20250628_0041_epochs1",
+    "yolov7/20250627_2154_epochs5",
+    "incomplete/yolov7",
+    "incomplete/yolov7-rcsosa",
+    "incomplete/yolov72",
+    "incomplete/yolov7-repvgg-rcsosa",
+    "incomplete/yolov7-repvgg"
+  ],
+  "removed": []
+}

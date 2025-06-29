@@ -1,4 +1,3 @@
-# 标准库导入
 import argparse          # 命令行参数解析
 import logging          # 日志记录
 import math             # 数学函数
@@ -6,6 +5,7 @@ import os               # 操作系统接口
 import random           # 随机数生成
 import time             # 时间相关函数
 from copy import deepcopy    # 深拷贝
+from datetime import datetime
 from pathlib import Path     # 路径操作
 from threading import Thread # 多线程
 
@@ -49,9 +49,32 @@ from utils.google_utils import attempt_download     # Google云下载工具
 from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
+from utils.experiment_manager import create_training_report  # 训练报告生成
 
 # 创建日志记录器
 logger = logging.getLogger(__name__)
+
+
+def print_training_info(save_dir, model_cfg, dataset_cfg, epochs, batch_size):
+    """
+    Print training configuration information and save path - optimized version with cleaner formatting
+    """
+    # Use more beautiful separators and emoji icons
+    separator = "━" * 80
+    logger.info(f"\n{separator}")
+    logger.info(f"� YOLOv7 Fire/Smoke Detection Model Training - Starting")
+    logger.info(f"{separator}")
+    
+    # Use table-style formatting with left-right alignment
+    logger.info(f"┌─ 📁 Save Directory │ {save_dir}")
+    logger.info(f"├─ 🏗️ Model Config   │ {model_cfg}")
+    logger.info(f"├─ 📊 Dataset Config │ {dataset_cfg}")
+    logger.info(f"├─ 🔄 Epochs         │ {epochs} epochs")
+    logger.info(f"└─ 📦 Batch Size     │ {batch_size} images/batch")
+    
+    logger.info(f"{separator}")
+    logger.info(f"🚀 Starting training... Please wait for model convergence")
+    logger.info(f"{separator}\n")
 
 
 def train(hyp, opt, device, tb_writer=None):
@@ -70,6 +93,9 @@ def train(hyp, opt, device, tb_writer=None):
     # 从选项中提取关键参数
     save_dir, epochs, batch_size, total_batch_size, weights, rank, freeze = \
         Path(opt.save_dir), opt.epochs, opt.batch_size, opt.total_batch_size, opt.weights, opt.global_rank, opt.freeze
+
+    # 显示训练配置信息
+    print_training_info(save_dir, opt.cfg, opt.data, epochs, batch_size)
 
     # 创建目录结构
     # 权重保存目录
@@ -99,7 +125,7 @@ def train(hyp, opt, device, tb_writer=None):
 
     # 日志记录配置 - 简化版本，不使用wandb
     if rank in [-1, 0]:  # 只在主进程中初始化日志
-        logger.info("开始训练 - 使用TensorBoard进行日志记录")
+        logger.info("Starting training - using TensorBoard for logging")
 
     # 数据集类别配置
     nc = 1 if opt.single_cls else int(data_dict['nc'])  # 类别数量
@@ -115,6 +141,77 @@ def train(hyp, opt, device, tb_writer=None):
         
         # 加载检查点
         ckpt = torch.load(weights, map_location=device, weights_only=False)  # 加载权重文件
+        
+        # 检查预训练权重的类别数与数据集类别数是否匹配
+        pretrained_nc = ckpt['model'].model[-1].nc if hasattr(ckpt['model'], 'model') else None
+        if pretrained_nc is not None and pretrained_nc != nc:
+            logger.info(f'⚠️  Pretrained weight classes ({pretrained_nc}) != Dataset classes ({nc})')
+            logger.info(f'   Automatically adapting detection head to {nc} classes...')
+            
+            # 自动适配检测头
+            model_to_adapt = ckpt['model']
+            detection_layer = model_to_adapt.model[-1]
+            
+            # 保存原始设置
+            anchors = detection_layer.anchors.clone()
+            stride = detection_layer.stride.clone()
+            
+            # 更新类别数
+            detection_layer.nc = nc
+            detection_layer.no = nc + 5  # 输出数量 = 类别数 + 5 (x,y,w,h,conf)
+            
+            # 重新初始化输出层
+            for i, conv in enumerate(detection_layer.m):
+                old_weight = conv.weight.data.clone()
+                old_bias = conv.bias.data.clone() if conv.bias is not None else None
+                
+                # 创建新的卷积层
+                new_conv = nn.Conv2d(
+                    in_channels=conv.in_channels,
+                    out_channels=anchors.shape[1] * detection_layer.no,
+                    kernel_size=conv.kernel_size,
+                    stride=conv.stride,
+                    padding=conv.padding,
+                    bias=conv.bias is not None
+                )
+                
+                # 智能权重复制
+                with torch.no_grad():
+                    anchor_outputs = anchors.shape[1]
+                    old_no = old_weight.shape[0] // anchor_outputs
+                    
+                    for a in range(anchor_outputs):
+                        old_start = a * old_no
+                        new_start = a * detection_layer.no
+                        
+                        # 复制位置和置信度权重 (x,y,w,h,conf)
+                        new_conv.weight.data[new_start:new_start+5] = old_weight[old_start:old_start+5]
+                        if new_conv.bias is not None and old_bias is not None:
+                            new_conv.bias.data[new_start:new_start+5] = old_bias[old_start:old_start+5]
+                        
+                        # 智能初始化类别权重
+                        if pretrained_nc >= nc:
+                            # 如果原模型类别数更多，复制前nc个类别的权重
+                            new_conv.weight.data[new_start+5:new_start+5+nc] = old_weight[old_start+5:old_start+5+nc]
+                            if new_conv.bias is not None and old_bias is not None:
+                                new_conv.bias.data[new_start+5:new_start+5+nc] = old_bias[old_start+5:old_start+5+nc]
+                        else:
+                            # 如果原模型类别数更少，复制已有的并随机初始化新的
+                            new_conv.weight.data[new_start+5:new_start+5+pretrained_nc] = old_weight[old_start+5:old_start+5+pretrained_nc]
+                            if new_conv.bias is not None and old_bias is not None:
+                                new_conv.bias.data[new_start+5:new_start+5+pretrained_nc] = old_bias[old_start+5:old_start+5+pretrained_nc]
+                            # 随机初始化额外的类别
+                            nn.init.normal_(new_conv.weight.data[new_start+5+pretrained_nc:new_start+5+nc], 0, 0.01)
+                            if new_conv.bias is not None:
+                                nn.init.constant_(new_conv.bias.data[new_start+5+pretrained_nc:new_start+5+nc], 0)
+                
+                detection_layer.m[i] = new_conv
+            
+            # 更新模型的类别名称
+            model_to_adapt.names = names
+            ckpt['model'] = model_to_adapt
+            
+            logger.info(f'✅ Detection head adapted: {pretrained_nc} classes → {nc} classes')
         
         # 创建模型：优先使用命令行指定的配置，否则使用权重文件中的配置
         model = Model(opt.cfg or ckpt['model'].yaml, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)
@@ -425,13 +522,31 @@ def train(hyp, opt, device, tb_writer=None):
         if rank != -1:
             dataloader.sampler.set_epoch(epoch)  # 设置采样器的epoch
         
-        # 设置进度条
+        # 设置进度条和表头显示 - 优化版本，更清晰的排版
         pbar = enumerate(dataloader)
-        logger.info(('\n' + '%10s' * 8) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'total', 'labels', 'img_size'))
-        if rank in [-1, 0]:
-            pbar = tqdm(pbar, total=nb)  # 创建进度条
         
-        optimizer.zero_grad()  # 清零梯度
+        # 打印美观的训练表头
+        header_separator = "─" * 100
+        logger.info(f"\n{header_separator}")
+        logger.info(f"📊 Epoch {epoch+1:3d}/{epochs} Training Details")
+        logger.info(f"{header_separator}")
+        
+        # Optimized headers with clearer column names and alignment
+        header_format = '%12s' * 8
+        logger.info(header_format % (
+            'Epoch', 'Memory', 'Box_Loss', 'Obj_Loss', 'Cls_Loss', 'Total_Loss', 'Targets', 'Img_Size'
+        ))
+        logger.info(header_format % (
+            'Round', 'Memory', 'Box_Loss', 'Obj_Loss', 'Cls_Loss', 'Total_Loss', 'Targets', 'Img_Size'
+        ))
+        logger.info(f"{header_separator}")
+        
+        if rank in [-1, 0]:
+            pbar = tqdm(pbar, total=nb, 
+                       desc=f'Epoch {epoch+1}/{epochs}',  # Clearer progress bar description
+                       bar_format='{l_bar}{bar:30}{r_bar}{bar:-30b}')  # Custom progress bar format
+        
+        optimizer.zero_grad()  # Clear gradients
         
         # 批次训练循环
         for i, (imgs, targets, paths, _) in pbar:  # 批次循环 --------------------------------
@@ -489,16 +604,38 @@ def train(hyp, opt, device, tb_writer=None):
                 if ema:
                     ema.update(model)  # 更新EMA模型
 
-            # 打印训练信息
+            # 打印训练信息 - 优化版本，更清晰的格式化输出
             if rank in [-1, 0]:  # 只在主进程中打印
                 # 更新平均损失
                 mloss = (mloss * i + loss_items) / (i + 1)
-                mem = '%.3gG' % (0)  # CPU模式 - 不跟踪GPU内存使用
+                mem = '%.1fMB' % (0)  # CPU模式 - 显示内存使用情况（这里显示为0，实际可以获取CPU内存使用）
                 
-                # 格式化显示信息：epoch, 内存, box损失, obj损失, cls损失, 总损失, 标签数, 图像尺寸
-                s = ('%10s' * 2 + '%10.4g' * 6) % (
-                    '%g/%g' % (epoch, epochs - 1), mem, *mloss, targets.shape[0], imgs.shape[-1])
-                pbar.set_description(s)  # 更新进度条描述
+                # 优化的格式化显示信息，使用更好的对齐和数值格式
+                # 格式：轮次, 内存, box损失, obj损失, cls损失, 总损失, 标签数, 图像尺寸
+                display_format = '%12s' * 2 + '%12.4f' * 4 + '%12d' * 2
+                s = display_format % (
+                    f'{epoch+1}/{epochs}',          # 当前轮次/总轮次
+                    mem,                            # 内存使用
+                    mloss[0],                       # 边界框损失
+                    mloss[1],                       # 目标性损失  
+                    mloss[2],                       # 分类损失
+                    mloss[3],                       # 总损失
+                    targets.shape[0],               # 当前批次的目标数量
+                    imgs.shape[-1]                  # 图像尺寸
+                )
+                
+                # 每10个批次打印一次详细信息到日志
+                if i % 10 == 0:
+                    logger.info(s)
+                
+                # 更新进度条描述，显示关键损失信息
+                pbar.set_description(
+                    f'Epoch {epoch+1}/{epochs} | '
+                    f'Loss: {mloss[3]:.4f} | '
+                    f'Box: {mloss[0]:.4f} | '
+                    f'Obj: {mloss[1]:.4f} | '
+                    f'Cls: {mloss[2]:.4f}'
+                )
 
                 # 绘制训练图像（前10个批次）
                 if plots and ni < 10:
@@ -511,6 +648,15 @@ def train(hyp, opt, device, tb_writer=None):
                     #     tb_writer.add_graph(torch.jit.trace(model, imgs, strict=False), [])
 
             # end batch ------------------------------------------------------------------------------------------------
+        
+        # Epoch 结束总结 - 添加每个epoch的总结信息
+        if rank in [-1, 0]:
+            epoch_separator = "┄" * 60
+            logger.info(f"\n{epoch_separator}")
+            logger.info(f"📈 Epoch {epoch+1}/{epochs} Completed | Average Loss: {mloss[3]:.4f}")
+            logger.info(f"   Box: {mloss[0]:.4f} | Obj: {mloss[1]:.4f} | Cls: {mloss[2]:.4f}")
+            logger.info(f"{epoch_separator}")
+        
         # end epoch ----------------------------------------------------------------------------------------------------
 
         # Scheduler
@@ -535,12 +681,31 @@ def train(hyp, opt, device, tb_writer=None):
                                                      plots=plots and final_epoch,
                                                      compute_loss=compute_loss,
                                                      v5_metric=opt.v5_metric)
+                    
+                    # Optimize validation result display - beautiful formatted output
+                    val_separator = "┈" * 80
+                    logger.info(f"\n{val_separator}")
+                    logger.info(f"🔍 Epoch {epoch+1} Validation Results")
+                    logger.info(f"{val_separator}")
+                    logger.info(f"┌─ 📊 Accuracy Metrics")
+                    logger.info(f"├─ 🎯 Precision    │ {results[0]:.4f}")
+                    logger.info(f"├─ 🔍 Recall       │ {results[1]:.4f}")
+                    logger.info(f"├─ 📈 mAP@0.5      │ {results[2]:.4f}")
+                    logger.info(f"├─ 📊 mAP@0.5:0.95 │ {results[3]:.4f}")
+                    logger.info(f"└─ ⚡ Inference Speed │ {times[1]:.1f}ms")
+                    
+                    logger.info(f"┌─ 📉 Validation Loss")
+                    logger.info(f"├─ 📦 Box Loss     │ {results[4]:.4f}")
+                    logger.info(f"├─ 🎯 Obj Loss     │ {results[5]:.4f}")
+                    logger.info(f"└─ 🏷️  Cls Loss     │ {results[6]:.4f}")
+                    logger.info(f"{val_separator}")
+                    
                 except Exception as e:
-                    logger.warning(f"测试阶段出现错误，将使用默认值继续训练: {e}")
-                    # 使用默认值继续训练
+                    logger.warning(f"⚠️  Error occurred during testing phase, continuing training with default values: {e}")
+                    # Use default values to continue training
                     results = (0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.5, mAP@.5-.95, val_loss(box, obj, cls)
-                    maps = np.zeros(nc)  # 每个类别的mAP设为0
-                    times = (0, 0, 0)  # 时间统计设为0
+                    maps = np.zeros(nc)  # Set mAP for each class to 0
+                    times = (0, 0, 0)  # Set time statistics to 0
 
             # Write
             with open(results_file, 'a') as f:
@@ -572,18 +737,52 @@ def train(hyp, opt, device, tb_writer=None):
                         'updates': ema.updates,
                         'optimizer': optimizer.state_dict()}
 
-                # 保存last, best并删除旧文件
+                # Save last, best and remove old files - optimize save info display
                 torch.save(ckpt, last)
+                
+                # Check if it's the best model and provide clear save info
                 if best_fitness == fi:
                     torch.save(ckpt, best)
+                    logger.info(f"🏆 Found better model! fitness: {fi:.4f} -> Saved to {best}")
+                    
                 if (best_fitness == fi) and (epoch >= 200):
-                    torch.save(ckpt, wdir / 'best_{:03d}.pt'.format(epoch))
+                    milestone_path = wdir / 'best_{:03d}.pt'.format(epoch)
+                    torch.save(ckpt, milestone_path)
+                    logger.info(f"📍 Milestone model saved: {milestone_path}")
+                
+                # Save weight files for each epoch using a more reasonable strategy with clear logs
+                saved_checkpoint = False
                 if epoch == 0:
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                elif ((epoch+1) % 25) == 0:
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                elif epoch >= (epochs-5):
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+                    # Always save the first epoch
+                    checkpoint_path = wdir / 'epoch_{:03d}.pt'.format(epoch)
+                    torch.save(ckpt, checkpoint_path)
+                    saved_checkpoint = True
+                    logger.info(f"💾 Initial epoch checkpoint: {checkpoint_path}")
+                elif epochs <= 10:
+                    # If total epochs ≤ 10, save every epoch
+                    checkpoint_path = wdir / 'epoch_{:03d}.pt'.format(epoch)
+                    torch.save(ckpt, checkpoint_path)
+                    saved_checkpoint = True
+                elif epochs <= 50:
+                    # If total epochs ≤ 50, save every 5 epochs and last 5 epochs
+                    if ((epoch+1) % 5) == 0 or epoch >= (epochs-5):
+                        checkpoint_path = wdir / 'epoch_{:03d}.pt'.format(epoch)
+                        torch.save(ckpt, checkpoint_path)
+                        saved_checkpoint = True
+                else:
+                    # If total epochs > 50, save every 25 epochs and last 5 epochs
+                    if ((epoch+1) % 25) == 0 or epoch >= (epochs-5):
+                        checkpoint_path = wdir / 'epoch_{:03d}.pt'.format(epoch)
+                        torch.save(ckpt, checkpoint_path)
+                        saved_checkpoint = True
+                
+                # Display checkpoint save info
+                if saved_checkpoint:
+                    logger.info(f"💾 Epoch {epoch+1} checkpoint saved: {checkpoint_path}")
+                
+                # Display regular save info
+                logger.info(f"💾 Latest model saved: {last}")
+                
                 del ckpt
 
         # end epoch ----------------------------------------------------------------------------------------------------
@@ -593,8 +792,35 @@ def train(hyp, opt, device, tb_writer=None):
         if plots:
             plot_results(save_dir=save_dir)  # save as results.png
         
-        # 测试最佳模型
-        logger.info('%g epochs completed in %.3f hours.\n' % (epoch - start_epoch + 1, (time.time() - t0) / 3600))
+        # Test best model - optimize training completion info display
+        training_time = (time.time() - t0) / 3600
+        
+        # Beautiful training completion info display
+        completion_separator = "━" * 80
+        logger.info(f"\n{completion_separator}")
+        logger.info(f"🎉 Training completed! Congratulations on successfully training YOLOv7 Fire/Smoke Detection Model")
+        logger.info(f"{completion_separator}")
+        
+        # Training summary information with table-style formatting
+        logger.info(f"┌─ 📊 Training Summary")
+        logger.info(f"├─ ⏱️  Total Time     │ {training_time:.2f} hours")
+        logger.info(f"├─ 🔄 Epochs Completed│ {epoch - start_epoch + 1} epochs")
+        logger.info(f"├─ 🎯 Best Fitness    │ {best_fitness:.4f}")
+        logger.info(f"├─ 💾 Model Save Path │ {save_dir}")
+        logger.info(f"├─ 🏆 Best Weights    │ {best}")
+        logger.info(f"└─ 📈 Latest Weights  │ {last}")
+        logger.info(f"{completion_separator}")
+        
+        # Friendly next step suggestions
+        logger.info(f"🚀 Next Step Recommendations:")
+        logger.info(f"   1. Use test.py to evaluate model performance")
+        logger.info(f"   2. Use detect.py for inference detection")
+        logger.info(f"   3. Check {save_dir}/results.png to analyze training curves")
+        logger.info(f"{completion_separator}\n")
+        
+        # 生成训练报告
+        create_training_report(save_dir, opt, hyp, results, best_fitness, training_time)
+        
         if opt.data.endswith('coco.yaml') and nc == 80:  # if COCO
             for m in (last, best) if best.exists() else (last):  # speed, mAP tests
                 results, _, _ = test.test(opt.data,
@@ -618,62 +844,62 @@ def train(hyp, opt, device, tb_writer=None):
         if opt.bucket:
             os.system(f'gsutil cp {final} gs://{opt.bucket}/weights')  # upload
     else:
-        # 分布式训练清理
+        # Distributed training cleanup
         dist.destroy_process_group()
     
-    # 清理资源，释放内存
+    # Clean up resources and free memory
     if 'dataloader' in locals():
         del dataloader
     if 'testloader' in locals():
         del testloader
-    # torch.cuda.empty_cache()  # CPU训练已禁用
+    # torch.cuda.empty_cache()  # Disabled for CPU training
     return results
 
 
 if __name__ == '__main__':
-    # 命令行参数解析
-    parser = argparse.ArgumentParser(description='YOLOv7 训练脚本 - 支持CPU/GPU训练，本版本已优化用于Apple Silicon Mac')
+    # Command line argument parsing
+    parser = argparse.ArgumentParser(description='YOLOv7 Training Script - Supports CPU/GPU training, optimized for Apple Silicon Mac')
     
-    # 模型和数据相关参数
-    parser.add_argument('--weights', type=str, default='', help='预训练权重路径')
-    parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='模型配置文件路径')
-    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='数据集配置文件路径')
-    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='超参数配置文件路径')
+    # Model and data related parameters
+    parser.add_argument('--weights', type=str, default='', help='Pretrained weights path')
+    parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='Model configuration file path')
+    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='Dataset configuration file path')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='Hyperparameters configuration file path')
     
-    # 训练参数
-    parser.add_argument('--epochs', type=int, default=50, help='训练轮数（CPU训练推荐使用较小值）')
-    parser.add_argument('--batch-size', type=int, default=4, help='批次大小（CPU训练推荐使用较小值）')
-    parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[训练, 测试] 图像尺寸')
-    parser.add_argument('--rect', action='store_true', help='矩形训练')
-    parser.add_argument('--resume', nargs='?', const=True, default=False, help='恢复最近的训练')
-    parser.add_argument('--nosave', action='store_true', help='仅保存最终检查点')
-    parser.add_argument('--notest', action='store_true', help='仅在最后一个epoch进行测试')
-    parser.add_argument('--noautoanchor', action='store_true', help='禁用自动锚框检查')
-    parser.add_argument('--evolve', action='store_true', help='进化超参数')
-    parser.add_argument('--bucket', type=str, default='', help='Google Cloud Storage桶')
-    parser.add_argument('--cache-images', action='store_true', help='缓存图像以加快训练速度')
-    parser.add_argument('--image-weights', action='store_true', help='使用加权图像选择进行训练')
-    parser.add_argument('--device', default='cpu', help='训练设备，使用CPU')
-    parser.add_argument('--multi-scale', action='store_true', help='多尺度训练：图像尺寸变化±50%')
-    parser.add_argument('--single-cls', action='store_true', help='将多类别数据作为单类别训练')
-    parser.add_argument('--adam', action='store_true', help='使用Adam优化器')
-    parser.add_argument('--sync-bn', action='store_true', help='使用同步批归一化（仅在DDP模式下可用）')
-    parser.add_argument('--local_rank', type=int, default=-1, help='DDP参数，请勿修改')
-    parser.add_argument('--workers', type=int, default=1, help='数据加载器最大工作进程数（CPU训练推荐1）')
+    # Training parameters
+    parser.add_argument('--epochs', type=int, default=50, help='Training epochs (recommend smaller values for CPU training)')
+    parser.add_argument('--batch-size', type=int, default=4, help='Batch size (recommend smaller values for CPU training)')
+    parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
+    parser.add_argument('--rect', action='store_true', help='Rectangular training')
+    parser.add_argument('--resume', nargs='?', const=True, default=False, help='Resume most recent training')
+    parser.add_argument('--nosave', action='store_true', help='Only save final checkpoint')
+    parser.add_argument('--notest', action='store_true', help='Only test final epoch')
+    parser.add_argument('--noautoanchor', action='store_true', help='Disable autoanchor check')
+    parser.add_argument('--evolve', action='store_true', help='Evolve hyperparameters')
+    parser.add_argument('--bucket', type=str, default='', help='Google Cloud Storage bucket')
+    parser.add_argument('--cache-images', action='store_true', help='Cache images for faster training')
+    parser.add_argument('--image-weights', action='store_true', help='Use weighted image selection for training')
+    parser.add_argument('--device', default='cpu', help='Training device, using CPU')
+    parser.add_argument('--multi-scale', action='store_true', help='Multi-scale training: vary img-size +/- 50%')
+    parser.add_argument('--single-cls', action='store_true', help='Train multi-class data as single-class')
+    parser.add_argument('--adam', action='store_true', help='Use Adam optimizer')
+    parser.add_argument('--sync-bn', action='store_true', help='Use SyncBatchNorm (only available in DDP mode)')
+    parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
+    parser.add_argument('--workers', type=int, default=1, help='Maximum dataloader workers (recommend 1 for CPU training)')
     
-    # 输出和日志参数
-    parser.add_argument('--project', default='runs/train', help='保存到project/name目录')
-    parser.add_argument('--name', default='yolov7', help='保存到project/name目录')
-    parser.add_argument('--exist-ok', action='store_true', help='已存在的project/name目录可用，不递增')
-    parser.add_argument('--quad', action='store_true', help='四倍数据加载器')
-    parser.add_argument('--linear-lr', action='store_true', help='线性学习率')
-    parser.add_argument('--label-smoothing', type=float, default=0.0, help='标签平滑epsilon值')
+    # Output and logging parameters
+    parser.add_argument('--project', default='runs/train', help='Training results save root directory')
+    parser.add_argument('--name', default='', help='Experiment name suffix (deprecated, now uses auto-naming)')
+    parser.add_argument('--exist-ok', action='store_true', help='Allow overwriting existing training directory')
+    parser.add_argument('--quad', action='store_true', help='Quad dataloader')
+    parser.add_argument('--linear-lr', action='store_true', help='Linear learning rate')
+    parser.add_argument('--label-smoothing', type=float, default=0.0, help='Label smoothing epsilon')
     
-    # 模型相关参数
-    parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='冻结层：yolov7骨干=50，前3层=0 1 2')
-    parser.add_argument('--v5-metric', action='store_true', help='在AP计算中假设最大召回率为1.0')
+    # Model related parameters
+    parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone=50, first 3=0 1 2')
+    parser.add_argument('--v5-metric', action='store_true', help='Assume maximum recall as 1.0 in AP calculation')
     
-    # 解析命令行参数
+    # Parse command line arguments
     opt = parser.parse_args()
 
     # 设置分布式训练变量
@@ -699,8 +925,16 @@ if __name__ == '__main__':
         opt.data, opt.cfg, opt.hyp = check_file(opt.data), check_file(opt.cfg), check_file(opt.hyp)  # check files
         assert len(opt.cfg) or len(opt.weights), 'either --cfg or --weights must be specified'
         opt.img_size.extend([opt.img_size[-1]] * (2 - len(opt.img_size)))  # extend to 2 sizes (train, test)
-        opt.name = 'evolve' if opt.evolve else opt.name
-        opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok | opt.evolve)  # increment run
+        
+        # Generate clearer save directory names
+        if opt.evolve:
+            opt.save_dir = increment_path(Path(opt.project) / 'evolve', exist_ok=opt.exist_ok)
+        else:
+            # Use unified experiment directory management
+            import __main__
+            script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train.py'
+            from utils.experiment_manager import setup_training_directory
+            opt.save_dir = setup_training_directory(opt, script_path)
 
     # DDP mode (Disabled for CPU-only)
     opt.total_batch_size = opt.batch_size
@@ -799,24 +1033,24 @@ if __name__ == '__main__':
                 for i, k in enumerate(hyp.keys()):  # plt.hist(v.ravel(), 300)
                     hyp[k] = float(x[i + 7] * v[i])  # mutate
 
-            # 限制超参数在合理范围内
+            # Limit hyperparameters to reasonable ranges
             for k, v in meta.items():
-                hyp[k] = max(hyp[k], v[1])  # 下限
-                hyp[k] = min(hyp[k], v[2])  # 上限
-                hyp[k] = round(hyp[k], 5)  # 保留有效数字
+                hyp[k] = max(hyp[k], v[1])  # lower limit
+                hyp[k] = min(hyp[k], v[2])  # upper limit
+                hyp[k] = round(hyp[k], 5)  # significant digits
 
-            # 训练变异后的超参数
+            # Train with mutated hyperparameters
             results = train(hyp.copy(), opt, device)
 
-            # 写入变异结果
+            # Write mutation results
             print_mutation(hyp.copy(), results, yaml_file, opt.bucket)
 
-        # 绘制进化结果
+        # Plot evolution results
         plot_evolution(yaml_file)
-        print(f'超参数进化完成。最佳结果保存为: {yaml_file}\n'
-              f'使用这些超参数训练新模型的命令: $ python train.py --hyp {yaml_file}')
+        print(f'Hyperparameter evolution complete. Best results saved as: {yaml_file}\n'
+              f'Command to train new model with these hyperparameters: $ python train.py --hyp {yaml_file}')
     
-    # 最终清理
+    # Final cleanup
     import gc
     gc.collect()  # 强制垃圾回收，释放内存
 

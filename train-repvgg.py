@@ -33,6 +33,7 @@ from utils.google_utils import attempt_download
 from utils.loss import ComputeLoss, ComputeLossOTA
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel
+from utils.experiment_manager import setup_training_directory, create_training_report
 
 logger = logging.getLogger(__name__)
 
@@ -449,12 +450,22 @@ def train(hyp, opt, device, tb_writer=None):
                     torch.save(ckpt, best)
                 if (best_fitness == fi) and (epoch >= 200):
                     torch.save(ckpt, wdir / 'best_{:03d}.pt'.format(epoch))
+                
+                # 保存每个epoch的权重文件，采用更合理的策略
                 if epoch == 0:
+                    # 第一个epoch总是保存
                     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                elif ((epoch+1) % 25) == 0:
+                elif epochs <= 10:
+                    # 如果总epoch数≤10，每个epoch都保存
                     torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
-                elif epoch >= (epochs-5):
-                    torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+                elif epochs <= 50:
+                    # 如果总epoch数≤50，每5个epoch保存一次，最后5个都保存
+                    if ((epoch+1) % 5) == 0 or epoch >= (epochs-5):
+                        torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
+                else:
+                    # 如果总epoch数>50，每25个epoch保存一次，最后5个都保存
+                    if ((epoch+1) % 25) == 0 or epoch >= (epochs-5):
+                        torch.save(ckpt, wdir / 'epoch_{:03d}.pt'.format(epoch))
                 del ckpt
 
         # end epoch ----------------------------------------------------------------------------------------------------
@@ -486,6 +497,19 @@ def train(hyp, opt, device, tb_writer=None):
         for f in last, best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
+                
+        # 生成训练报告
+        training_time = (time.time() - t0) / 3600  # hours
+        create_training_report(
+            save_dir=save_dir,
+            opt=opt,
+            hyp=hyp,
+            results=results,
+            best_fitness=best_fitness,
+            training_time=training_time
+        )
+        logger.info(f'📊 训练报告已保存到: {save_dir}/training_report.md')
+                
         if opt.bucket:
             os.system(f'gsutil cp {final} gs://{opt.bucket}/weights')  # upload
     else:
@@ -552,7 +576,14 @@ if __name__ == '__main__':
         assert len(opt.cfg) or len(opt.weights), 'either --cfg or --weights must be specified'
         opt.img_size.extend([opt.img_size[-1]] * (2 - len(opt.img_size)))  # extend to 2 sizes (train, test)
         opt.name = 'evolve' if opt.evolve else opt.name
-        opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok | opt.evolve)  # increment run
+        
+        # 使用统一的实验目录管理
+        import __main__
+        script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-repvgg.py'
+        if opt.evolve:
+            opt.save_dir = increment_path(Path(opt.project) / 'evolve', exist_ok=opt.exist_ok)
+        else:
+            opt.save_dir = setup_training_directory(opt, script_path)
 
     # DDP mode
     opt.total_batch_size = opt.batch_size
