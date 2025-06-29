@@ -1,47 +1,101 @@
-import argparse
-import logging
-import math
-import os
-import random
-import time
-from copy import deepcopy
-from pathlib import Path
-from threading import Thread
+import argparse          
+import logging          
+import math         
+import os           
+import random           
+import time             
+from copy import deepcopy    
+from datetime import datetime
+from pathlib import Path     
+from threading import Thread 
 
-import numpy as np
-import torch.distributed as dist
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
-import torch.optim.lr_scheduler as lr_scheduler
-import torch.utils.data
-import yaml
-from torch.cuda import amp
-from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.utils.tensorboard import SummaryWriter
-from tqdm import tqdm
 
-import test  # import test.py to get mAP after each epoch
-from models.experimental import attempt_load
-from models.yolo import Model
-from utils.autoanchor import check_anchors
-from utils.datasets import create_dataloader
+import numpy as np      
+
+
+import torch.distributed as dist      
+import torch.nn as nn                  
+import torch.nn.functional as F       
+import torch.optim as optim           
+import torch.optim.lr_scheduler as lr_scheduler  
+import torch.utils.data          
+import yaml          
+
+# 自动混合精度训练 - 已为CPU训练禁用
+# AMP (Automatic Mixed Precision) 自动混合精度训练可以加速GPU训练并减少显存使用
+# 但在CPU训练中不需要，因此已注释掉以避免兼容性问题
+# from torch.cuda import amp  # CUDA AMP (已为CPU训练注释)
+# try:
+#     from torch import amp  # PyTorch 2.7+ 兼容导入
+# except ImportError:
+#     # 旧版本PyTorch的回退方案
+#     from torch.cuda import amp
+
+# PyTorch扩展功能
+from torch.nn.parallel import DistributedDataParallel as DDP 
+from torch.utils.tensorboard import SummaryWriter     
+from tqdm import tqdm         
+
+# 项目模块导入
+import test  # 导入test.py用于每个epoch后计算mAP
+from models.experimental import attempt_load    
+from models.yolo import Model                   
+from utils.autoanchor import check_anchors      
+from utils.datasets import create_dataloader    
 from utils.general import labels_to_class_weights, increment_path, labels_to_image_weights, init_seeds, \
     fitness, strip_optimizer, get_latest_run, check_dataset, check_file, check_git_status, check_img_size, \
-    check_requirements, print_mutation, set_logging, one_cycle, colorstr
-from utils.google_utils import attempt_download
-from utils.loss import ComputeLoss, ComputeLossOTA
-from utils.plots import plot_images, plot_labels, plot_results, plot_evolution
-from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel
-from utils.experiment_manager import setup_training_directory, create_training_report
+    check_requirements, print_mutation, set_logging, one_cycle, colorstr  
+from utils.google_utils import attempt_download     # Google云下载工具
+from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
+from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
+from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
+from utils.experiment_manager import create_training_report  # 训练报告生成
 
+# 创建日志记录器
 logger = logging.getLogger(__name__)
 
 
+def print_training_info(save_dir, model_cfg, dataset_cfg, epochs, batch_size):
+    """
+    Print training configuration information and save path - optimized version with cleaner formatting
+    """
+    # Use more beautiful separators and emoji icons
+    separator = "━" * 80
+    logger.info(f"\n{separator}")
+    logger.info(f"🔥 YOLOv7-RepVGG-RCSOSA Fire/Smoke Detection Model Training - Starting")
+    logger.info(f"{separator}")
+    
+    # Use table-style formatting with left-right alignment
+    logger.info(f"┌─ 📁 Save Directory │ {save_dir}")
+    logger.info(f"├─ 🏗️ Model Config   │ {model_cfg}")
+    logger.info(f"├─ 📊 Dataset Config │ {dataset_cfg}")
+    logger.info(f"├─ 🔄 Epochs         │ {epochs} epochs")
+    logger.info(f"└─ 📦 Batch Size     │ {batch_size} images/batch")
+    
+    logger.info(f"{separator}")
+    logger.info(f"🚀 Starting RepVGG+RCSOSA combined training... Please wait for model convergence")
+    logger.info(f"{separator}\n")
+
+
 def train(hyp, opt, device, tb_writer=None):
+    """
+    主训练函数 - RepVGG+RCSOSA版本
+    
+    参数:
+        hyp: 超参数字典，包含学习率、权重衰减等训练参数
+        opt: 命令行选项，包含模型配置、数据路径等
+        device: 训练设备 (CPU/GPU)
+        tb_writer: TensorBoard日志写入器
+    """
+    # 打印超参数信息
     logger.info(colorstr('hyperparameters: ') + ', '.join(f'{k}={v}' for k, v in hyp.items()))
+    
+    # 从选项中提取关键参数
     save_dir, epochs, batch_size, total_batch_size, weights, rank, freeze = \
         Path(opt.save_dir), opt.epochs, opt.batch_size, opt.total_batch_size, opt.weights, opt.global_rank, opt.freeze
+
+    # 显示训练配置信息
+    print_training_info(save_dir, opt.cfg, opt.data, epochs, batch_size)
 
     # Directories
     wdir = save_dir / 'weights'
@@ -289,7 +343,9 @@ def train(hyp, opt, device, tb_writer=None):
     maps = np.zeros(nc)  # mAP per class
     results = (0, 0, 0, 0, 0, 0, 0)  # P, R, mAP@.5, mAP@.5-.95, val_loss(box, obj, cls)
     scheduler.last_epoch = start_epoch - 1  # do not move
-    scaler = amp.GradScaler(enabled=cuda)
+    # 自动混合精度训练 - CPU训练时禁用
+    # scaler = amp.GradScaler(enabled=cuda)  # 已禁用AMP以支持CPU训练
+    scaler = None  # 禁用AMP scaler，支持CPU训练
     compute_loss_ota = ComputeLossOTA(model)  # init loss class
     compute_loss = ComputeLoss(model)  # init loss class
     logger.info(f'Image sizes {imgsz} train, {imgsz_test} test\n'
@@ -349,25 +405,24 @@ def train(hyp, opt, device, tb_writer=None):
                     ns = [math.ceil(x * sf / gs) * gs for x in imgs.shape[2:]]  # new shape (stretched to gs-multiple)
                     imgs = F.interpolate(imgs, size=ns, mode='bilinear', align_corners=False)
 
-            # Forward
-            with amp.autocast(enabled=cuda):
-                pred = model(imgs)  # forward
-                if 'loss_ota' not in hyp or hyp['loss_ota'] == 1:
-                    loss, loss_items = compute_loss_ota(pred, targets.to(device), imgs)  # loss scaled by batch_size
-                else:
-                    loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
+            # Forward - CPU训练不使用AMP
+            # with amp.autocast(enabled=cuda):  # 已禁用AMP以支持CPU训练
+            pred = model(imgs)  # forward
+            if 'loss_ota' not in hyp or hyp['loss_ota'] == 1:
+                loss, loss_items = compute_loss_ota(pred, targets.to(device), imgs)  # loss scaled by batch_size
+            else:
+                loss, loss_items = compute_loss(pred, targets.to(device))  # loss scaled by batch_size
                 if rank != -1:
                     loss *= opt.world_size  # gradient averaged between devices in DDP mode
                 if opt.quad:
                     loss *= 4.
 
-            # Backward
-            scaler.scale(loss).backward()
+            # Backward - CPU训练不使用AMP
+            loss.backward()
 
             # Optimize
             if ni % accumulate == 0:
-                scaler.step(optimizer)  # optimizer.step
-                scaler.update()
+                optimizer.step()
                 optimizer.zero_grad()
                 if ema:
                     ema.update(model)
@@ -525,7 +580,7 @@ if __name__ == '__main__':
     parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='data.yaml path')
     parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=300)
-    parser.add_argument('--batch-size', type=int, default=4, help='批次大小（CPU训练推荐使用较小值）')
+    parser.add_argument('--batch-size', type=int, default=4, help='batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
@@ -544,7 +599,7 @@ if __name__ == '__main__':
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
     parser.add_argument('--workers', type=int, default=2, help='maximum number of dataloader workers')
     parser.add_argument('--project', default='runs/train', help='save to project/name')
-    parser.add_argument('--name', default='train-repvgg-rcsosa', help='save to project/name')
+    parser.add_argument('--name', default='yolov7-repvgg-rcsosa', help='save to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--quad', action='store_true', help='quad dataloader')
     parser.add_argument('--linear-lr', action='store_true', help='linear LR')
@@ -577,13 +632,8 @@ if __name__ == '__main__':
         opt.img_size.extend([opt.img_size[-1]] * (2 - len(opt.img_size)))  # extend to 2 sizes (train, test)
         opt.name = 'evolve' if opt.evolve else opt.name
         
-        # 使用统一的实验目录管理
-        import __main__
-        script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-repvgg-rcsosa.py'
-        if opt.evolve:
-            opt.save_dir = increment_path(Path(opt.project) / 'evolve', exist_ok=opt.exist_ok)
-        else:
-            opt.save_dir = setup_training_directory(opt, script_path)
+        # 使用统一的实验目录管理 - 对齐train.py的目录创建逻辑
+        opt.save_dir = increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok)  # increment run
 
     # DDP mode
     opt.total_batch_size = opt.batch_size

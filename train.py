@@ -743,7 +743,7 @@ def train(hyp, opt, device, tb_writer=None):
                 # Check if it's the best model and provide clear save info
                 if best_fitness == fi:
                     torch.save(ckpt, best)
-                    logger.info(f"🏆 Found better model! fitness: {fi:.4f} -> Saved to {best}")
+                    logger.info(f"🏆 Found better model! fitness: {fi.item():.4f} -> Saved to {best}")
                     
                 if (best_fitness == fi) and (epoch >= 200):
                     milestone_path = wdir / 'best_{:03d}.pt'.format(epoch)
