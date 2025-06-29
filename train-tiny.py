@@ -598,7 +598,7 @@ if __name__ == '__main__':
     parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='Hyperparameters configuration file path')
     
     # Training parameters
-    parser.add_argument('--epochs', type=int, default=50, help='Training epochs (recommend smaller values for CPU training)')
+    parser.add_argument('--epochs', type=int, default=300, help='Training epochs (recommend smaller values for CPU training)')
     parser.add_argument('--batch-size', type=int, default=8, help='Batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
     parser.add_argument('--rect', action='store_true', help='Rectangular training')
