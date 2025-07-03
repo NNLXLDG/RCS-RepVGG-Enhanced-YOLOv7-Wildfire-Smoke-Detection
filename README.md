@@ -22,7 +22,7 @@
 
 接下来是rcs-yolo原文章的训练和测试指令，使用时请记得替换 **对应的--cfg, --name, --weights**
 
-这里我已经对数据路径进行替换，workers改为2（不然会爆内存）
+这里我已经对数据路径进行替换，workers改为4，batchsize改为原来减半（不然会爆内存）
 
 # 如何使用指令？
 
@@ -49,13 +49,13 @@ The hyperparameter setting file is hyp_training.yaml in the directory [./data/](
 ###### Single GPU training
 
 ```
-python train.py --workers 2 --device 0 --batch-size 32 --data datasets_smokefire\data.yaml --img 640 640 --cfg cfg/training/rcs-yolo.yaml --weights '' --name rcs-yolo --hyp data/hyp_training.yaml
+python train.py --workers 4 --device 0 --batch-size 16 --data datasets_smokefire\data.yaml --img 640 640 --cfg cfg/training/rcs-yolo.yaml --weights '' --name rcs-yolo --hyp data/hyp_training.yaml
 ```
 
 ###### Multiple GPU training
 
 ```
-python -m torch.distributed.launch --nproc_per_node 4 --master_port 9527 train.py --workers 2 --device 0,1,2,3 --sync-bn --batch-size 128 --data datasets_smokefire\data.yaml --img 640 640 --cfg cfg/training/rcs-yolo.yaml --weights '' --name rcs-yolo --hyp data/hyp_training.yaml
+python -m torch.distributed.launch --nproc_per_node 4 --master_port 9527 train.py --workers 4 --device 0,1,2,3 --sync-bn --batch-size 64 --data datasets_smokefire\data.yaml --img 640 640 --cfg cfg/training/rcs-yolo.yaml --weights '' --name rcs-yolo --hyp data/hyp_training.yaml
 ```
 
 #### Testing
@@ -63,5 +63,5 @@ python -m torch.distributed.launch --nproc_per_node 4 --master_port 9527 train.p
 The model weights we pretrained on the brain tumor detection was saved as best.pt in the directory [./runs/train/exp/weights/](https://github.com/mkang315/RCS-YOLO/tree/main/runs/train).
 
 ```
-python test.py --data datasets_smokefire\data.yaml --img 640 --batch 32 --conf 0.001 --iou 0.65 --device 0 --weights runs/train/exp/weights/best.pt --name val
+python test.py --data datasets_smokefire\data.yaml --img 640 --batch 16 --conf 0.001 --iou 0.65 --device 0 --weights runs/train/exp/weights/best.pt --name val
 ```
