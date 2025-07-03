@@ -595,7 +595,7 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default='', help='Pretrained weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7-tiny.yaml', help='Model configuration file path')
     parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='Dataset configuration file path')
-    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='Hyperparameters configuration file path')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.train-tiny.yaml', help='Hyperparameters configuration file path')
     
     # Training parameters
     parser.add_argument('--epochs', type=int, default=100, help='Training epochs (recommend smaller values for CPU training)')
@@ -780,3 +780,9 @@ if __name__ == '__main__':
         plot_evolution(yaml_file)
         print(f'Hyperparameter evolution complete. Best results saved as: {yaml_file}\n'
               f'Command to train a new model with these hyperparameters: $ python train.py --hyp {yaml_file}')
+
+    # Final cleanup
+    import gc
+    gc.collect()  # 强制垃圾回收，释放内存
+
+# 程序结束

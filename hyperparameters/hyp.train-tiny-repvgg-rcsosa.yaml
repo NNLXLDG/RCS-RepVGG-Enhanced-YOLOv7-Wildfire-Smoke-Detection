@@ -1,0 +1,43 @@
+# YOLOv7-Tiny+RepVGG+RCSOSA 轻量化全能模型 高性能GPU训练优化配置
+# 适用于: train-tiny-repvgg-rcsosa.py
+# 模型特点: 结合Tiny、RepVGG重参数化和RCSOSA注意力机制，GPU训练性能最优
+# GPU训练优化: 复合架构在高性能显卡上训练，追求最佳性能和精度平衡
+
+lr0: 0.01   # 初始学习率 (GPU加速训练优化)
+lrf: 0.01   # 最终学习率比例 (深度收敛)
+momentum: 0.937  # SGD动量
+weight_decay: 0.0005  # 权重衰减
+warmup_epochs: 3.0  # 预热轮数 (GPU加速预热)
+warmup_momentum: 0.8  # 预热动量
+warmup_bias_lr: 0.1  # 预热偏置学习率
+
+# 损失函数权重 - 复合架构高性能配置
+box: 0.05   # 边界框损失权重
+cls: 0.5    # 分类损失权重 (强化分类性能)
+obj: 1.0    # 目标检测损失权重 (最大化目标检测性能)
+cls_pw: 1.0  # 分类正样本权重
+obj_pw: 1.0  # 目标正样本权重
+iou_t: 0.20  # IoU训练阈值
+anchor_t: 4.0  # anchor倍数阈值
+
+# Focal Loss
+fl_gamma: 0.0  # focal loss gamma
+
+# 数据增强参数 - 高性能GPU训练策略
+hsv_h: 0.015  # HSV色调增强
+hsv_s: 0.7    # HSV饱和度增强 (增强数据多样性)
+hsv_v: 0.4    # HSV亮度增强 (提升泛化能力)
+degrees: 0.0  # 图像旋转角度
+translate: 0.1  # 图像平移
+scale: 0.5     # 图像缩放 (大幅度缩放提升鲁棒性)
+shear: 0.0     # 图像剪切
+perspective: 0.0  # 透视变换
+flipud: 0.0    # 上下翻转
+fliplr: 0.5    # 左右翻转
+mosaic: 1.0    # 马赛克增强 (最大化mosaic增强)
+mixup: 0.0     # 图像混合 (关闭mixup优化训练效果)
+copy_paste: 0.0  # 复制粘贴
+paste_in: 0.0   # 粘贴增强
+
+# 损失计算优化
+loss_ota: 1  # 使用OTA损失 (复合架构受益于OTA)

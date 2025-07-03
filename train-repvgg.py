@@ -25,11 +25,6 @@ import yaml
 # AMP (Automatic Mixed Precision) 自动混合精度训练可以加速GPU训练并减少显存使用
 # 但在CPU训练中不需要，因此已注释掉以避免兼容性问题
 # from torch.cuda import amp  # CUDA AMP (已为CPU训练注释)
-# try:
-#     from torch import amp  # PyTorch 2.7+ 兼容导入
-# except ImportError:
-#     # 旧版本PyTorch的回退方案
-#     from torch.cuda import amp
 
 # PyTorch扩展功能
 from torch.nn.parallel import DistributedDataParallel as DDP 
@@ -48,6 +43,11 @@ from utils.general import labels_to_class_weights, increment_path, labels_to_ima
 from utils.google_utils import attempt_download     # Google云下载工具
 from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
+from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
+from utils.experiment_manager import create_training_report  # 训练报告生成
+
+# 创建日志记录器
+logger = logging.getLogger(__name__)
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
 from utils.experiment_manager import create_training_report  # 训练报告生成
 
@@ -593,51 +593,63 @@ def train(hyp, opt, device, tb_writer=None):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', type=str, default='', help='initial weights path')
-    parser.add_argument('--cfg', type=str, default='cfg/training/yolov7-repvgg.yaml', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='data.yaml path')
-    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='hyperparameters path')
-    parser.add_argument('--epochs', type=int, default=50)
-    parser.add_argument('--batch-size', type=int, default=16, help='batch size (recommend smaller values for CPU training)')
+    # Command line argument parsing
+    parser = argparse.ArgumentParser(description='YOLOv7-RepVGG Training Script - Optimized for Apple Silicon Mac and CPU training')
+    
+    # Model and data related parameters
+    parser.add_argument('--weights', type=str, default='', help='Pretrained weights path')
+    parser.add_argument('--cfg', type=str, default='cfg/training/yolov7-repvgg.yaml', help='Model configuration file path')
+    parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='Dataset configuration file path')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.train-repvgg.yaml', help='Hyperparameters configuration file path')
+    
+    # Training parameters
+    parser.add_argument('--epochs', type=int, default=100, help='Training epochs (recommend smaller values for CPU training)')
+    parser.add_argument('--batch-size', type=int, default=8, help='Batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
-    parser.add_argument('--rect', action='store_true', help='rectangular training')
-    parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
-    parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
-    parser.add_argument('--notest', action='store_true', help='only test final epoch')
-    parser.add_argument('--noautoanchor', action='store_true', help='disable autoanchor check')
-    parser.add_argument('--evolve', action='store_true', help='evolve hyperparameters')
-    parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
-    parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
-    parser.add_argument('--image-weights', action='store_true', help='use weighted image selection for training')
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-    parser.add_argument('--multi-scale', action='store_true', help='vary img-size +/- 50%%')
-    parser.add_argument('--single-cls', action='store_true', help='train multi-class data as single-class')
-    parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
-    parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
+    parser.add_argument('--rect', action='store_true', help='Rectangular training')
+    parser.add_argument('--resume', nargs='?', const=True, default=False, help='Resume most recent training')
+    parser.add_argument('--nosave', action='store_true', help='Only save final checkpoint')
+    parser.add_argument('--notest', action='store_true', help='Only test final epoch')
+    parser.add_argument('--noautoanchor', action='store_true', help='Disable autoanchor check')
+    parser.add_argument('--evolve', action='store_true', help='Evolve hyperparameters')
+    parser.add_argument('--bucket', type=str, default='', help='Google Cloud Storage bucket')
+    parser.add_argument('--cache-images', action='store_true', help='Cache images for faster training')
+    parser.add_argument('--image-weights', action='store_true', help='Use weighted image selection for training')
+    parser.add_argument('--device', default='cpu', help='Training device, using CPU')
+    parser.add_argument('--multi-scale', action='store_true', help='Multi-scale training: vary img-size +/- 50%')
+    parser.add_argument('--single-cls', action='store_true', help='Train multi-class data as single-class')
+    parser.add_argument('--adam', action='store_true', help='Use Adam optimizer')
+    parser.add_argument('--sync-bn', action='store_true', help='Use SyncBatchNorm (only available in DDP mode)')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
-    parser.add_argument('--workers', type=int, default=2, help='maximum number of dataloader workers')
+    parser.add_argument('--workers', type=int, default=1, help='Maximum dataloader workers (recommend 1 for CPU training)')
+    
+    # Output and logging parameters
     parser.add_argument('--project', default='runs/train', help='Training results save root directory')
     parser.add_argument('--name', default='', help='Experiment name suffix (deprecated, now uses auto-naming)')
-    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-    parser.add_argument('--quad', action='store_true', help='quad dataloader')
-    parser.add_argument('--linear-lr', action='store_true', help='linear LR')
+    parser.add_argument('--exist-ok', action='store_true', help='Allow overwriting existing training directory')
+    parser.add_argument('--quad', action='store_true', help='Quad dataloader')
+    parser.add_argument('--linear-lr', action='store_true', help='Linear learning rate')
     parser.add_argument('--label-smoothing', type=float, default=0.0, help='Label smoothing epsilon')
-    parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone of yolov7=50, first3=0 1 2')
-    parser.add_argument('--v5-metric', action='store_true', help='assume maximum recall as 1.0 in AP calculation')
+    
+    # Model related parameters
+    parser.add_argument('--freeze', nargs='+', type=int, default=[0], help='Freeze layers: backbone=50, first 3=0 1 2')
+    parser.add_argument('--v5-metric', action='store_true', help='Assume maximum recall as 1.0 in AP calculation')
+    
+    # Parse command line arguments
     opt = parser.parse_args()
 
-    # Set DDP variables
+    # 设置分布式训练变量
     opt.world_size = int(os.environ['WORLD_SIZE']) if 'WORLD_SIZE' in os.environ else 1
     opt.global_rank = int(os.environ['RANK']) if 'RANK' in os.environ else -1
-    set_logging(opt.global_rank)
+    set_logging(opt.global_rank)  # 设置日志记录
+    # 可选的Git状态检查和依赖检查（已注释）
     #if opt.global_rank in [-1, 0]:
     #    check_git_status()
     #    check_requirements()
 
-    # Resume
+    # 恢复训练
     if opt.resume and not isinstance(opt.resume, str):  # resume an interrupted run
-        ckpt = get_latest_run()  # specified or most recent path
+        ckpt = get_latest_run()  # 获取最新的训练运行
         assert os.path.isfile(ckpt), 'ERROR: --resume checkpoint does not exist'
         apriori = opt.global_rank, opt.local_rank
         with open(Path(ckpt).parent.parent / 'opt.yaml') as f:
@@ -649,24 +661,27 @@ if __name__ == '__main__':
         opt.data, opt.cfg, opt.hyp = check_file(opt.data), check_file(opt.cfg), check_file(opt.hyp)  # check files
         assert len(opt.cfg) or len(opt.weights), 'either --cfg or --weights must be specified'
         opt.img_size.extend([opt.img_size[-1]] * (2 - len(opt.img_size)))  # extend to 2 sizes (train, test)
-        opt.name = 'evolve' if opt.evolve else opt.name
         
-        # 使用统一的实验目录管理 - 对齐train.py的目录创建逻辑
-        import __main__
-        script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-repvgg.py'
-        from utils.experiment_manager import setup_training_directory
-        opt.save_dir = setup_training_directory(opt, script_path)
+        # Generate clearer save directory names
+        if opt.evolve:
+            opt.save_dir = increment_path(Path(opt.project) / 'evolve', exist_ok=opt.exist_ok)
+        else:
+            # Use unified experiment directory management
+            import __main__
+            script_path = __main__.__file__ if hasattr(__main__, '__file__') else 'train-repvgg.py'
+            from utils.experiment_manager import setup_training_directory
+            opt.save_dir = setup_training_directory(opt, script_path)
 
-    # DDP mode
+    # DDP mode (Disabled for CPU-only)
     opt.total_batch_size = opt.batch_size
-    device = select_device(opt.device, batch_size=opt.batch_size)
-    if opt.local_rank != -1:
-        assert torch.cuda.device_count() > opt.local_rank
-        torch.cuda.set_device(opt.local_rank)
-        device = torch.device('cuda', opt.local_rank)
-        dist.init_process_group(backend='nccl', init_method='env://')  # distributed backend
-        assert opt.batch_size % opt.world_size == 0, '--batch-size must be multiple of CUDA device count'
-        opt.batch_size = opt.total_batch_size // opt.world_size
+    device = select_device('cpu', batch_size=opt.batch_size)  # Force CPU device
+    # if opt.local_rank != -1:
+    #     assert torch.cuda.device_count() > opt.local_rank
+    #     torch.cuda.set_device(opt.local_rank)
+    #     device = torch.device('cuda', opt.local_rank)
+    #     dist.init_process_group(backend='nccl', init_method='env://')  # distributed backend
+    #     assert opt.batch_size % opt.world_size == 0, '--batch-size must be multiple of CUDA device count'
+    #     opt.batch_size = opt.total_batch_size // opt.world_size
 
     # Hyperparameters
     with open(opt.hyp) as f:

@@ -25,11 +25,6 @@ import yaml
 # AMP (Automatic Mixed Precision) 自动混合精度训练可以加速GPU训练并减少显存使用
 # 但在CPU训练中不需要，因此已注释掉以避免兼容性问题
 # from torch.cuda import amp  # CUDA AMP (已为CPU训练注释)
-# try:
-#     from torch import amp  # PyTorch 2.7+ 兼容导入
-# except ImportError:
-#     # 旧版本PyTorch的回退方案
-#     from torch.cuda import amp
 
 # PyTorch扩展功能
 from torch.nn.parallel import DistributedDataParallel as DDP 
@@ -62,7 +57,7 @@ def print_training_info(save_dir, model_cfg, dataset_cfg, epochs, batch_size):
     # Use more beautiful separators and emoji icons
     separator = "━" * 80
     logger.info(f"\n{separator}")
-    logger.info(f"� YOLOv7 Fire/Smoke Detection Model Training - Starting")
+    logger.info(f"🔥 YOLOv7 Fire/Smoke Detection Model Training - Starting")
     logger.info(f"{separator}")
     
     # Use table-style formatting with left-right alignment
@@ -96,8 +91,6 @@ def train(hyp, opt, device, tb_writer=None):
 
     # 显示训练配置信息
     print_training_info(save_dir, opt.cfg, opt.data, epochs, batch_size)
-
-    # 创建目录结构
     # 权重保存目录
     wdir = save_dir / 'weights'
     wdir.mkdir(parents=True, exist_ok=True)  # 递归创建目录
@@ -125,7 +118,7 @@ def train(hyp, opt, device, tb_writer=None):
 
     # 日志记录配置 - 简化版本，不使用wandb
     if rank in [-1, 0]:  # 只在主进程中初始化日志
-        logger.info("Starting training - using TensorBoard for logging")
+        logger.info("🚀 Starting training - Using TensorBoard for logging")
 
     # 数据集类别配置
     nc = 1 if opt.single_cls else int(data_dict['nc'])  # 类别数量
@@ -858,17 +851,17 @@ def train(hyp, opt, device, tb_writer=None):
 
 if __name__ == '__main__':
     # Command line argument parsing
-    parser = argparse.ArgumentParser(description='YOLOv7 Training Script - Supports CPU/GPU training, optimized for Apple Silicon Mac')
+    parser = argparse.ArgumentParser(description='YOLOv7 Training Script - Optimized for Apple Silicon Mac and CPU training')
     
     # Model and data related parameters
     parser.add_argument('--weights', type=str, default='', help='Pretrained weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7.yaml', help='Model configuration file path')
     parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='Dataset configuration file path')
-    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='Hyperparameters configuration file path')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.train.yaml', help='Hyperparameters configuration file path')
     
     # Training parameters
-    parser.add_argument('--epochs', type=int, default=50, help='Training epochs (recommend smaller values for CPU training)')
-    parser.add_argument('--batch-size', type=int, default=16, help='Batch size (recommend smaller values for CPU training)')
+    parser.add_argument('--epochs', type=int, default=100, help='Training epochs (recommend smaller values for CPU training)')
+    parser.add_argument('--batch-size', type=int, default=8, help='Batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
     parser.add_argument('--rect', action='store_true', help='Rectangular training')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='Resume most recent training')
@@ -885,7 +878,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='Use Adam optimizer')
     parser.add_argument('--sync-bn', action='store_true', help='Use SyncBatchNorm (only available in DDP mode)')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
-    parser.add_argument('--workers', type=int, default=2, help='Maximum dataloader workers (recommend 1 for CPU training)')
+    parser.add_argument('--workers', type=int, default=1, help='Maximum dataloader workers (recommend 1 for CPU training)')
     
     # Output and logging parameters
     parser.add_argument('--project', default='runs/train', help='Training results save root directory')

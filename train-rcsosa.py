@@ -25,11 +25,6 @@ import yaml
 # AMP (Automatic Mixed Precision) 自动混合精度训练可以加速GPU训练并减少显存使用
 # 但在CPU训练中不需要，因此已注释掉以避免兼容性问题
 # from torch.cuda import amp  # CUDA AMP (已为CPU训练注释)
-# try:
-#     from torch import amp  # PyTorch 2.7+ 兼容导入
-# except ImportError:
-#     # 旧版本PyTorch的回退方案
-#     from torch.cuda import amp
 
 # PyTorch扩展功能
 from torch.nn.parallel import DistributedDataParallel as DDP 
@@ -48,6 +43,11 @@ from utils.general import labels_to_class_weights, increment_path, labels_to_ima
 from utils.google_utils import attempt_download     # Google云下载工具
 from utils.loss import ComputeLoss, ComputeLossOTA  # 损失函数计算
 from utils.plots import plot_images, plot_labels, plot_results, plot_evolution  # 绘图工具
+from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
+from utils.experiment_manager import create_training_report  # 训练报告生成
+
+# 创建日志记录器
+logger = logging.getLogger(__name__)
 from utils.torch_utils import ModelEMA, select_device, intersect_dicts, torch_distributed_zero_first, is_parallel  # PyTorch工具
 from utils.experiment_manager import create_training_report  # 训练报告生成
 
@@ -595,9 +595,9 @@ if __name__ == '__main__':
     parser.add_argument('--weights', type=str, default='', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='cfg/training/yolov7-rcsosa.yaml', help='model.yaml path')
     parser.add_argument('--data', type=str, default='datasets/smokefire.yaml', help='data.yaml path')
-    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.scratch.p5.yaml', help='hyperparameters path')
-    parser.add_argument('--epochs', type=int, default=300)
-    parser.add_argument('--batch-size', type=int, default=16, help='batch size (recommend smaller values for CPU training)')
+    parser.add_argument('--hyp', type=str, default='hyperparameters/hyp.train-rcsosa.yaml', help='hyperparameters path')
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--batch-size', type=int, default=8, help='batch size (recommend smaller values for CPU training)')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
     parser.add_argument('--rect', action='store_true', help='rectangular training')
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
@@ -608,13 +608,13 @@ if __name__ == '__main__':
     parser.add_argument('--bucket', type=str, default='', help='gsutil bucket')
     parser.add_argument('--cache-images', action='store_true', help='cache images for faster training')
     parser.add_argument('--image-weights', action='store_true', help='use weighted image selection for training')
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', default='cpu', help='Training device, using CPU')
     parser.add_argument('--multi-scale', action='store_true', help='vary img-size +/- 50%%')
     parser.add_argument('--single-cls', action='store_true', help='train multi-class data as single-class')
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
     parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
-    parser.add_argument('--workers', type=int, default=2, help='maximum number of dataloader workers')
+    parser.add_argument('--workers', type=int, default=1, help='maximum number of dataloader workers')
     parser.add_argument('--project', default='runs/train', help='Training results save root directory')
     parser.add_argument('--name', default='', help='Experiment name suffix (deprecated, now uses auto-naming)')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
@@ -655,16 +655,16 @@ if __name__ == '__main__':
         from utils.experiment_manager import setup_training_directory
         opt.save_dir = setup_training_directory(opt, script_path)
 
-    # DDP mode
+    # DDP mode (Disabled for CPU-only)
     opt.total_batch_size = opt.batch_size
-    device = select_device(opt.device, batch_size=opt.batch_size)
-    if opt.local_rank != -1:
-        assert torch.cuda.device_count() > opt.local_rank
-        torch.cuda.set_device(opt.local_rank)
-        device = torch.device('cuda', opt.local_rank)
-        dist.init_process_group(backend='nccl', init_method='env://')  # distributed backend
-        assert opt.batch_size % opt.world_size == 0, '--batch-size must be multiple of CUDA device count'
-        opt.batch_size = opt.total_batch_size // opt.world_size
+    device = select_device('cpu', batch_size=opt.batch_size)  # Force CPU device
+    # if opt.local_rank != -1:
+    #     assert torch.cuda.device_count() > opt.local_rank
+    #     torch.cuda.set_device(opt.local_rank)
+    #     device = torch.device('cuda', opt.local_rank)
+    #     dist.init_process_group(backend='nccl', init_method='env://')  # distributed backend
+    #     assert opt.batch_size % opt.world_size == 0, '--batch-size must be multiple of CUDA device count'
+    #     opt.batch_size = opt.total_batch_size // opt.world_size
 
     # Hyperparameters
     with open(opt.hyp) as f:
