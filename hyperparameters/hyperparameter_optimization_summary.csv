@@ -1,8 +1,0 @@
-Parameter,Standard P5,Smokefire Optimized,Change (%),Reasoning
-cls (Classification Loss),0.3,0.4,+33.3%,Enhance classification for varied fire/smoke shapes
-obj (Objectness Loss),0.7,0.8,+14.3%,Improve detection of blurry boundaries
-hsv_h (Hue Aug),0.015,0.02,+33.3%,Adapt to fire color variations (red→yellow→blue)
-hsv_s (Saturation Aug),0.7,0.8,+14.3%,Handle different smoke densities
-hsv_v (Value Aug),0.4,0.5,+25.0%,Adapt to day/night lighting conditions
-mixup (Mixup Prob),0.15,0.1,-33.3%,"Preserve fire/smoke features, reduce over-mixing"
-paste_in (Paste Prob),0.15,0.1,-33.3%,"Maintain scene context, avoid unrealistic combinations"
