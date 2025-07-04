@@ -5,11 +5,13 @@ nc: 2 # number of classes
 depth_multiple: 1.0 # model depth multiple
 width_multiple: 1.0 # layer channel multiple
 
-# anchors
+
+# anchors - 根据论文更新 (使用K-means聚类生成的4个锚点尺度)
 anchors:
-  - [12, 16, 19, 36, 40, 28] # P3/8
-  - [36, 75, 76, 55, 72, 146] # P4/16
-  - [142, 110, 192, 243, 459, 401] # P5/32
+  - [87, 90, 127, 139] # P4/16 
+  - [154, 171, 191, 240] # P5/32
+
+
 
 # yolov7-repvgg backbone
 backbone:
@@ -135,9 +137,9 @@ head: [
     [[-1, -2, -3, -4, -5, -6], 1, Concat, [1]],
     [-1, 1, Conv, [512, 1, 1]], # 101
 
-    [75, 1, RepVGG, [256, 3, 1]],
+    # 根据论文减少检测头 (从3个减少到2个)
     [88, 1, RepVGG, [512, 3, 1]],
     [101, 1, RepVGG, [1024, 3, 1]],
 
-    [[102, 103, 104], 1, IDetect, [nc, anchors]], # Detect(P3, P4, P5)
+    [[103, 104], 1, IDetect, [nc, anchors]], # Detect(P4, P5) - 仅使用两个特征层
   ]

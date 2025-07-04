@@ -5,11 +5,10 @@ nc: 2 # number of classes
 depth_multiple: 1.0 # model depth multiple
 width_multiple: 1.0 # layer channel multiple
 
-# anchors
+# anchors - 根据论文更新 (使用K-means聚类生成的4个锚点尺度)
 anchors:
-  - [12, 16, 19, 36, 40, 28] # P3/8
-  - [36, 75, 76, 55, 72, 146] # P4/16
-  - [142, 110, 192, 243, 459, 401] # P5/32
+  - [87, 90, 127, 139] # P4/16 
+  - [154, 171, 191, 240] # P5/32
 
 # yolov7 backbone with RCSOSA modules
 backbone:
@@ -95,9 +94,9 @@ head: [
     [-1, 2, RCSOSA, [512, True]], # 52
     [-1, 1, Conv, [512, 1, 1]], # 53
 
-    [39, 1, RepConv, [256, 3, 1]], # 54
-    [46, 1, RepConv, [512, 3, 1]], # 55
-    [53, 1, RepConv, [1024, 3, 1]], # 56
+    # 根据论文减少检测头 (从3个减少到2个)
+    [46, 1, RepConv, [512, 3, 1]], # 54
+    [53, 1, RepConv, [1024, 3, 1]], # 55
 
-    [[54, 55, 56], 1, IDetect, [nc, anchors]], # Detect(P3, P4, P5)  # 57
+    [[54, 55], 1, IDetect, [nc, anchors]], # Detect(P4, P5) - 仅使用两个特征层 # 56
   ]

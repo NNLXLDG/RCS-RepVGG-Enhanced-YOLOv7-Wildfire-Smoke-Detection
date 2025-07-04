@@ -123,6 +123,10 @@ python test_class_filtering.py
 - **[权重适配分析](docs/ACCURATE_PROBLEM_ANALYSIS.md)**: 权重加载问题深度分析
 - **[超参数优化](docs/HYPERPARAMETER_OPTIMIZATION_LOGIC.md)**: 烟火检测专用超参数优化
 - **[代码重构总结](docs/REFACTORING_SUMMARY.md)**: test.py脚本优化过程
+- **[卷积核参数详解](docs/YOLOv7-Kernel-Size-Visualization.md)**: 卷积核大小(kernel_size)参数详细解析和可视化
+- **[通道数详解](docs/YOLOv7-Channels-Explained.md)**: 卷积通道数(channels)参数详细解析和计算
+- **[特征图和滤波器详解](docs/YOLOv7-Feature-Maps-and-Filters.md)**: 特征图和卷积滤波器的工作原理与可视化
+- **[YOLOv7架构说明](docs/YOLOv7-RepVGG-RCSOSA-README.md)**: RepVGG-RCSOSA架构详细说明和参数映射
 
 
 ## 使用建议
