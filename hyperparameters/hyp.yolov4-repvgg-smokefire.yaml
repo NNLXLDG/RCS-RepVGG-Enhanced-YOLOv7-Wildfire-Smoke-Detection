@@ -1,10 +1,10 @@
-# YOLOv4-CSP-RepVGG-IDetect超参数配置 - 基于smokefire数据集优化
+# YOLOv4-RepVGG超参数配置 - 基于smokefire数据集优化
 # RepVGG模块提供更好的训练-推理效率
 # 数据集信息: 2类 (fire, smoke), 9087张图像, 18092个标注
 
 # 学习率配置 (RepVGG优化)
-lr0: 0.01          # 初始学习率 (RepVGG训练稳定)
-lrf: 0.2           # 最终学习率 (RepVGG收敛特性)
+lr0: 0.012         # RepVGG可用稍高学习率
+lrf: 0.2           # RepVGG收敛特性
 
 # 优化器参数 (RepVGG优化)
 momentum: 0.937     # SGD动量
@@ -15,30 +15,30 @@ warmup_epochs: 5.0    # RepVGG需要更长预热
 warmup_momentum: 0.8  # 预热动量
 warmup_bias_lr: 0.1   # 预热偏置学习率
 
-# 增强参数 (RepVGG适配)
-hsv_h: 0.02        # 略微增加色调变化(RepVGG更鲁棒)
+# 增强参数 (RepVGG适配fire/smoke)
+hsv_h: 0.025       # RepVGG对颜色变化更鲁棒
 hsv_s: 0.7         # 饱和度增强
 hsv_v: 0.4         # 亮度增强
-degrees: 5.0       # 轻微旋转(RepVGG结构优势)
-translate: 0.1     # 平移增强
-scale: 0.5         # 尺度变化
-shear: 2.0         # 轻微剪切
-perspective: 0.0   # 透视变换
+degrees: 5.0       # RepVGG结构优势允许更多旋转
+translate: 0.12    # 稍强平移增强
+scale: 0.6         # 尺度变化
+shear: 2.0         # RepVGG处理形变能力强
+perspective: 0.0001  # 微小透视变换
 flipud: 0.0        # 上下翻转
 fliplr: 0.5        # 左右翻转
 mosaic: 1.0        # mosaic增强
-mixup: 0.15        # RepVGG适配mixup
+mixup: 0.2         # RepVGG适合更强mixup
 copy_paste: 0.0    # copy-paste
 
-# 损失权重 (RepVGG优化)
+# 损失权重 (RepVGG+类别不平衡优化)
 box: 0.05          # box损失
-cls: 0.3           # 分类损失(RepVGG分类能力强)
+cls: 0.28          # RepVGG分类能力强，进一步降低权重
 cls_pw: 1.0        # 分类正权重
-obj: 1.0           # 目标性损失
+obj: 1.25          # 目标性损失增强
 obj_pw: 1.0        # 目标性正权重
-iou_t: 0.20        # IoU阈值
-anchor_t: 4.0      # 锚点阈值
-fl_gamma: 0.0      # 焦点损失gamma
+iou_t: 0.18        # 稍降IoU阈值，增加正样本
+anchor_t: 3.5      # 降低锚点阈值适配小目标
+fl_gamma: 0.6      # 焦点损失缓解不平衡
 
 # RepVGG特定参数
 img_size: 640      # 训练图像尺寸
@@ -46,3 +46,4 @@ img_size: 640      # 训练图像尺寸
 # 针对RepVGG的训练策略
 # RepVGG在训练时有多分支，推理时融合为单分支
 # 因此训练时需要稍微不同的策略
+# 适合fire/smoke检测中需要实时性的场景

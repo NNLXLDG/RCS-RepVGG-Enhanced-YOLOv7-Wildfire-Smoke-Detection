@@ -5,7 +5,7 @@
 # [4] Anonymous authors: Official rcs-yolo. https://anonymous.4open.science/r/RCS-YOLO-1F86 (2023)
 
 # The proposed RCS-OSA modules are replaced by BottleneckCSPC from the CSP-Darknet backbone in yolov4-csp.yaml.
-# To train or test by running train_repvgg-csp.py or ./test_repvgg-csp.py.
+# To train or test by running train_Conv-csp.py or ./test_Conv-csp.py.
 
 # Parameters
 nc: 2  # number of classes
@@ -18,14 +18,14 @@ anchors:
 # RCS-OSA backbone
 backbone: # 12462
   # [from, number, module, args]
-  [[-1, 1, RepVGG, [64, 3, 2]],  # 0-P1/2
-   [-1, 1, RepVGG, [128, 3, 2]],  # 1-P2/4
+  [[-1, 1, Conv, [64, 3, 2]],  # 0-P1/2
+   [-1, 1, Conv, [128, 3, 2]],  # 1-P2/4
    [-1, 2, BottleneckCSPC, [128]],
-   [-1, 1, RepVGG, [256, 3, 2]],  # 3-P3/8
+   [-1, 1, Conv, [256, 3, 2]],  # 3-P3/8
    [-1, 2, BottleneckCSPC, [256]],
-   [-1, 1, RepVGG, [512, 3, 2]],  # 5-P4/16
+   [-1, 1, Conv, [512, 3, 2]],  # 5-P4/16
    [-1, 4, BottleneckCSPC, [512, True]],
-   [-1, 1, RepVGG, [1024, 3, 2]],  # 7-P5/32
+   [-1, 1, Conv, [1024, 3, 2]],  # 7-P5/32
    [-1, 2, BottleneckCSPC, [1024, True]],
    [-1, 1, SPPF, [1024, 5]],  # 9
   ]
@@ -39,12 +39,12 @@ head:
    [[-1, 6], 1, Concat, [1]],  # cat backbone P4
    [-1, 2, BottleneckCSPC, [512]],  # 14
 
-   [-1, 1, RepVGG, [512, 3, 2]],
+   [-1, 1, Conv, [512, 3, 2]],
    [[-1, 10], 1, Concat, [1]],  # cat head P5
    [-1, 2, BottleneckCSPC, [768]],  # 17
 
-   [14, 1, RepVGG, [512, 3, 1]],
-   [17, 1, RepVGG, [768, 3, 1]],
+   [14, 1, Conv, [512, 3, 1]],
+   [17, 1, Conv, [768, 3, 1]],
 
    [[18, 19], 1, IDetect, [nc, anchors]],  # Detect(P3, P4, P5)
   ]

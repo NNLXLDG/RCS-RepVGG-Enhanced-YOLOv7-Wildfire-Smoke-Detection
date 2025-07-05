@@ -1,0 +1,110 @@
+{
+  "total_images": 9087,
+  "total_annotations": 18092,
+  "classes": {
+    "1": 12386,
+    "0": 5706
+  },
+  "image_sizes_stats": {
+    "count": 9087,
+    "mean": 640.0,
+    "std": 0.0,
+    "min": 640.0,
+    "max": 640.0,
+    "median": 640.0
+  },
+  "bbox_sizes_stats": {
+    "count": 18092,
+    "mean": 176.47255693124032,
+    "std": 140.01226561318748,
+    "min": 1.0,
+    "max": 640.0,
+    "median": 135.0
+  },
+  "bbox_ratios_stats": {
+    "count": 18092,
+    "mean": 1.1299116869323231,
+    "std": 0.9384152248775354,
+    "min": 0.06521739130434782,
+    "max": 26.444444444444443,
+    "median": 0.9042553191489362
+  },
+  "bbox_areas_stats": {
+    "count": 18092,
+    "mean": 43418.771542670795,
+    "std": 60940.456565264365,
+    "min": 4.0,
+    "max": 409600.0,
+    "median": 19146.0
+  },
+  "images_per_class": {
+    "1": 12386,
+    "0": 5706
+  },
+  "annotations_per_image_stats": {
+    "count": 9087,
+    "mean": 1.9909761197314846,
+    "std": 1.7555351956722407,
+    "min": 1.0,
+    "max": 25.0,
+    "median": 1.0
+  },
+  "empty_images": 0,
+  "corrupted_images": 0,
+  "class_names": {
+    "0": "fire",
+    "1": "smoke"
+  },
+  "image_width_stats": {
+    "mean": 640.0,
+    "std": 0.0,
+    "min": 640,
+    "max": 640,
+    "median": 640.0
+  },
+  "image_height_stats": {
+    "mean": 640.0,
+    "std": 0.0,
+    "min": 640,
+    "max": 640,
+    "median": 640.0
+  },
+  "bbox_width_stats": {
+    "mean": 168.44514149900508,
+    "std": 138.12859267452902,
+    "min": 2.0,
+    "max": 640.0,
+    "median": 127.0
+  },
+  "bbox_height_stats": {
+    "mean": 184.49997236347556,
+    "std": 141.4159896651938,
+    "min": 1.0,
+    "max": 640.0,
+    "median": 144.0
+  },
+  "bbox_ratio_stats": {
+    "mean": 1.1299116869323231,
+    "std": 0.9384152248775354,
+    "min": 0.06521739130434782,
+    "max": 26.444444444444443,
+    "median": 0.9042553191489362
+  },
+  "bbox_area_stats": {
+    "mean": 43418.771542670795,
+    "std": 60940.456565264365,
+    "min": 4.0,
+    "max": 409600.0,
+    "median": 19146.0
+  },
+  "generated_at": "2025-07-05T16:16:55.815541",
+  "dataset_config": {
+    "train": "datasets/train/images",
+    "val": "datasets/valid/images",
+    "nc": 2,
+    "names": [
+      "fire",
+      "smoke"
+    ]
+  }
+}
