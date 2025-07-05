@@ -1,6 +1,6 @@
-train: datasets_smokefire\train\images
-val: datasets_smokefire\valid\images
-test: datasets_smokefire\test\images
+train: datasets_smokefire/train/images
+val: datasets_smokefire/valid/images
+test: datasets_smokefire/test/images
 
 nc: 2
 names: ['smoke', 'fire']

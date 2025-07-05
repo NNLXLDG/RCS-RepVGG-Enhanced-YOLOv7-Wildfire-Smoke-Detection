@@ -1,12 +1,12 @@
 # RCS-YOLO v1.0  (Two heads)
 
 # Parameters
-nc: 1  # number of classes
+nc: 2  # number of classes
 depth_multiple: 1.0  # model depth multiple
 width_multiple: 0.75  # layer channel multiple
 anchors:
-  - [87,90,  127,139]  # P4/16
-  - [154,171,  191,240]  # P5/32
+  - [37, 49,  89, 110]  # P4/16 (Higher resolution) [37=0.058*640, 49=0.077*640, etc.]
+  - [177, 372,  249, 110]
 
 # backbone
 backbone: # 12462
