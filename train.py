@@ -654,7 +654,7 @@ if __name__ == '__main__':
                 'copy_paste': (1, 0.0, 1.0),  # segment copy-paste (probability)
                 'paste_in': (1, 0.0, 1.0)}    # segment copy-paste (probability)
         
-        with open(opt.hyp, errors='ignore') as f:
+        with open(opt.hyp, errors='ignore', encoding='utf8') as f:
             hyp = yaml.safe_load(f)  # load hyps dict
             if 'anchors' not in hyp:  # anchors commented in hyp.yaml
                 hyp['anchors'] = 3
