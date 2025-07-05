@@ -1,0 +1,55 @@
+# YOLOv4-CSP-IDetect超参数配置 - 基于smokefire数据集优化
+# 数据集信息: 2类 (fire, smoke), 9087张图像, 18092个标注
+# 图像尺寸: 640x640, 平均每张图像1.99个标注
+
+# 学习率配置
+lr0: 0.01          # 初始学习率 (SGD=1E-2, Adam=1E-3)
+lrf: 0.1           # 最终学习率 (lr0 * lrf)
+
+# 优化器参数
+momentum: 0.937     # SGD动量/Adam beta1
+weight_decay: 0.0005  # 优化器权重衰减 5e-4
+
+# 增强参数
+hsv_h: 0.015       # 图像HSV-Hue增强 (fraction)
+hsv_s: 0.7         # 图像HSV-Saturation增强 (fraction)
+hsv_v: 0.4         # 图像HSV-Value增强 (fraction)
+degrees: 0.0       # 图像旋转 (+/- deg)
+translate: 0.1     # 图像平移 (+/- fraction)
+scale: 0.5         # 图像缩放 (+/- gain)
+shear: 0.0         # 图像剪切 (+/- deg)
+perspective: 0.0   # 图像透视 (+/- fraction), 范围 0-0.001
+flipud: 0.0        # 图像上下翻转 (probability)
+fliplr: 0.5        # 图像左右翻转 (probability)
+mosaic: 1.0        # 图像mosaic (probability)
+mixup: 0.0         # 图像mixup (probability)
+copy_paste: 0.0    # 分割copy-paste (probability)
+
+# 损失权重
+box: 0.05          # box损失增益
+cls: 0.5           # cls损失增益
+cls_pw: 1.0        # cls BCELoss positive_weight
+obj: 1.0           # obj损失增益 (scale with pixels)
+obj_pw: 1.0        # obj BCELoss positive_weight
+iou_t: 0.20        # IoU训练阈值
+anchor_t: 4.0      # 锚点倍数阈值
+# 
+# 焦点损失
+fl_gamma: 0.0      # 焦点损失gamma (efficientDet default gamma=1.5)
+
+# 图像尺寸配置
+img_size: 640      # 训练图像尺寸
+
+# 数据集特定优化
+# 基于分析结果优化:
+# - 类别不平衡(smoke:fire = 2.17:1)，调整cls权重
+# - 小目标较多，调整obj权重
+# - 目标密度适中(每图1.99个)
+warmup_epochs: 3.0    # 预热轮次
+warmup_momentum: 0.8  # 预热动量
+warmup_bias_lr: 0.1   # 预热偏置学习率
+
+# 针对fire/smoke检测的特殊配置
+# fire类别通常较小，smoke类别可能较大且不规则
+anchor_t: 3.0         # 降低锚点阈值以更好地匹配小目标
+iou_t: 0.15          # 降低IoU阈值以增加正样本

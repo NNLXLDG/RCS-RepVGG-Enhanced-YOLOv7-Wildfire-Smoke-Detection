@@ -1,13 +1,14 @@
+# YOLOv7-Tiny for smoke and fire detection
+
 # parameters
-nc: 80  # number of classes
+nc: 2  # number of classes (smoke, fire)
 depth_multiple: 1.0  # model depth multiple
 width_multiple: 1.0  # layer channel multiple
 
-# anchors
+# anchors - 根据论文更新 (使用K-means聚类生成的4个锚点尺度)
 anchors:
-  - [10,13, 16,30, 33,23]  # P3/8
-  - [30,61, 62,45, 59,119]  # P4/16
-  - [116,90, 156,198, 373,326]  # P5/32
+  - [87, 90, 127, 139] # P4/16 
+  - [154, 171, 191, 240] # P5/32
 
 # yolov7-tiny backbone
 backbone:
