@@ -12,7 +12,7 @@ nc: 2  # number of classes
 depth_multiple: 1.0  # model depth multiple
 width_multiple: 0.75  # layer channel multiple
 anchors:
-  - [37, 49,  89, 110]  # P4/16 (Higher resolution) [37=0.058*640, 49=0.077*640, etc.]
+  - [37, 49,  89, 110]  # P4/16
   - [177, 372,  249, 110]
 
 # RCS-OSA backbone
@@ -27,7 +27,7 @@ backbone: # 12462
    [-1, 4, BottleneckCSPC, [512, True]],
    [-1, 1, RepVGG, [1024, 3, 2]],  # 7-P5/32
    [-1, 2, BottleneckCSPC, [1024, True]],
-   [-1, 1, SimAM, []],  # 新增 ★
+   [-1, 1, SimAM, []],  
    [-1, 1, SPPF, [1024, 5]],  # 9
   ]
 
@@ -43,6 +43,6 @@ head:
    [-1, 2, BottleneckCSPC, [768]],  # 17
    [14, 1, RepVGG, [512, 3, 1]],
    [17, 1, RepVGG, [768, 3, 1]],
-   [[18, 19], 1, SimAM, []],  # 新增 ★
+   [[18, 19], 1, SimAM, []],  
    [[20], 1, IDetect, [nc, anchors]],  # Detect(P3, P4, P5)
   ]
