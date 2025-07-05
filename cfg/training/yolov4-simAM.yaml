@@ -37,7 +37,7 @@ head:
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
    [-1, 2, BottleneckCSPC, [512]],
    [[-1, 6], 1, Concat, [1]],  # cat backbone P4
-   [-1, 1, SimAM, []],  # 新增 ★
+   [-1, 1, SimAM, []],
    [-1, 2, BottleneckCSPC, [512]],  # 14
    [-1, 1, Conv, [512, 3, 2]],
    [[-1, 10], 1, Concat, [1]],  # cat head P5
