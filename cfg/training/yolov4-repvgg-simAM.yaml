@@ -18,7 +18,7 @@ anchors:
 # RCS-OSA backbone
 backbone: # 12462
   # [from, number, module, args]
-[[-1, 1, RepVGG, [64, 3, 2]],  # 0-P1/2
+  [[-1, 1, RepVGG, [64, 3, 2]],  # 0-P1/2
    [-1, 1, RepVGG, [128, 3, 2]],  # 1-P2/4
    [-1, 2, BottleneckCSPC, [128]],
    [-1, 1, RepVGG, [256, 3, 2]],  # 3-P3/8

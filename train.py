@@ -607,7 +607,7 @@ if __name__ == '__main__':
         opt.batch_size = opt.total_batch_size // opt.world_size
 
     # Hyperparameters
-    with open(opt.hyp) as f:
+    with open(opt.hyp, encoding='utf-8') as f:
         hyp = yaml.load(f, Loader=yaml.SafeLoader)  # load hyps
 
     # Train
@@ -654,10 +654,10 @@ if __name__ == '__main__':
                 'copy_paste': (1, 0.0, 1.0),  # segment copy-paste (probability)
                 'paste_in': (1, 0.0, 1.0)}    # segment copy-paste (probability)
         
-        with open(opt.hyp, errors='ignore', encoding='utf8') as f:
+        with open(opt.hyp, encoding='utf-8', errors='ignore') as f:
             hyp = yaml.safe_load(f)  # load hyps dict
             if 'anchors' not in hyp:  # anchors commented in hyp.yaml
-                hyp['anchors'] = 3
+                hyp['anchors'] = 2
                 
         assert opt.local_rank == -1, 'DDP mode not implemented for --evolve'
         opt.notest, opt.nosave = True, True  # only test/save final epoch
