@@ -18,24 +18,27 @@ backbone: # 12462
    [-1, 2, RCSOSA, [256]],
    [-1, 1, RepVGG, [512, 3, 2]],  # 5-P4/16
    [-1, 4, RCSOSA, [512, True]],
-   [-1, 1, RepVGG, [1024, 3, 2]],  # 7-P5/32
+   [-1, 1, SimAM, []],
+   [-1, 1, RepVGG, [1024, 3, 2]],  # 8-P5/32
    [-1, 2, RCSOSA, [1024, True]],
    [-1, 1, SimAM, []],
-   [-1, 1, SPPF, [1024, 5]],  # 10
+   [-1, 1, SPPF, [1024, 5]],  # 11
   ]
 
 # head
 head: 
 
-  [[-1, 1, Conv, [512, 1, 1]], # 11
+  [[-1, 1, Conv, [512, 1, 1]], # 12
    [-1, 1, nn.Upsample, [None, 2, 'nearest']],
    [-1, 2, RCSOSA, [512]],
    [[-1, 6], 1, Concat, [1]],  # cat backbone P4
-   [-1, 2, RCSOSA, [512]],  # 15
+   [-1, 1, SimAM, []],  
+   [-1, 2, RCSOSA, [512]],  # 17
    [-1, 1, RepVGG, [512, 3, 2]],
    [[-1, 10], 1, Concat, [1]],  # cat head P5
-   [-1, 2, RCSOSA, [768]],  # 18
-   [15, 1, RepVGG, [512, 3, 1]],
-   [18, 1, RepVGG, [768, 3, 1]],
-   [[19, 20], 1, IDetect, [nc, anchors]],  # Detect(P4, P5)
+   [-1, 1, SimAM, []], 
+   [-1, 2, RCSOSA, [768]],  # 21
+   [17, 1, RepVGG, [512, 3, 1]],
+   [21, 1, RepVGG, [768, 3, 1]],
+   [[22, 23], 1, IDetect, [nc, anchors]],  # Detect(P4, P5)
   ]
