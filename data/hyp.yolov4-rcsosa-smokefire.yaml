@@ -1,48 +1,30 @@
-# YOLOv4-RCSOSA超参数配置 - 基于smokefire数据集优化
-# RCSOSA模块提供增强的特征提取能力
-# 数据集信息: 2类 (fire, smoke), 9087张图像, 18092个标注
-
-# 学习率配置 (RCSOSA优化)
-lr0: 0.01          # RCSOSA稳定初始学习率
-lrf: 0.12          # RCSOSA特征重用收敛特性
-
-# 优化器参数 (RCSOSA优化)
-momentum: 0.937     # SGD动量
-weight_decay: 0.0004  # RCSOSA特征重用，略降权重衰减
-
-# RCSOSA特定优化
-warmup_epochs: 4.0    # RCSOSA特征重用，适中预热
-warmup_momentum: 0.8  # 预热动量
-warmup_bias_lr: 0.1   # 预热偏置学习率
-
-# 增强参数 (RCSOSA适配fire/smoke)
-hsv_h: 0.02        # 色调变化
-hsv_s: 0.75        # RCSOSA对饱和度变化敏感度好
-hsv_v: 0.45        # 亮度增强
-degrees: 4.0       # 适度旋转
-translate: 0.1     # 平移增强
-scale: 0.55        # RCSOSA多尺度特征适应
-shear: 1.5         # 适度剪切
-perspective: 0.0001  # 微小透视变换
-flipud: 0.0        # 上下翻转
-fliplr: 0.5        # 左右翻转
-mosaic: 1.0        # mosaic增强
-mixup: 0.12        # RCSOSA适配mixup
-copy_paste: 0.0    # copy-paste
-
-# 损失权重 (RCSOSA+类别不平衡优化)
-box: 0.05          # box损失
-cls: 0.32          # RCSOSA分类特征丰富，适度降低
-cls_pw: 1.0        # 分类正权重
-obj: 1.2           # 目标性损失适度增强
-obj_pw: 1.0        # 目标性正权重
-iou_t: 0.25        # RCSOSA精确定位，更高IoU要求
-anchor_t: 3.8      # 略降锚点阈值
-fl_gamma: 0.7      # 焦点损失适配RCSOSA
-
-# RCSOSA特定参数
-img_size: 640      # 训练图像尺寸
-
-# 针对RCSOSA的训练策略
-# RCSOSA模块增强特征提取能力，适合复杂场景
-# 对fire/smoke的不规则形状有更好的适应性
+lr0: 0.01
+lrf: 0.12
+momentum: 0.937
+weight_decay: 0.0004
+warmup_epochs: 4.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+box: 0.05
+cls: 0.32
+cls_pw: 1.0
+obj: 1.2
+obj_pw: 1.0
+iou_t: 0.25
+anchor_t: 3.8
+fl_gamma: 0.7
+hsv_h: 0.02
+hsv_s: 0.75
+hsv_v: 0.45
+degrees: 4.0
+translate: 0.1
+scale: 0.55
+shear: 1.5
+perspective: 0.0001
+flipud: 0.0
+fliplr: 0.5
+mosaic: 1.0
+mixup: 0.12
+copy_paste: 0.0
+paste_in: 0.0
+loss_ota: 0 

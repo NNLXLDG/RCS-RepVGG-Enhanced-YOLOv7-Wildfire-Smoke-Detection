@@ -1,48 +1,30 @@
-# YOLOv4-RepVGG-RCSOSA超参数配置 - 基于smokefire数据集优化
-# 结合RepVGG和RCSOSA模块的混合架构
-# 数据集信息: 2类 (fire, smoke), 9087张图像, 18092个标注
-
-# 学习率配置 (混合架构优化)
-lr0: 0.011         # RepVGG+RCSOSA混合优势
-lrf: 0.18          # 两种架构协同收敛
-
-# 优化器参数 (混合架构优化)
-momentum: 0.937     # SGD动量
-weight_decay: 0.00045  # 混合架构权重衰减
-
-# 混合架构特定优化
-warmup_epochs: 5.0    # 混合架构需要更长预热
-warmup_momentum: 0.8  # 预热动量
-warmup_bias_lr: 0.1   # 预热偏置学习率
-
-# 增强参数 (混合架构适配fire/smoke)
-hsv_h: 0.025       # RepVGG+RCSOSA对颜色鲁棒性
-hsv_s: 0.75        # 饱和度增强
-hsv_v: 0.45        # 亮度增强
-degrees: 5.0       # 混合架构支持更强旋转
-translate: 0.12    # 平移增强
-scale: 0.6         # 尺度变化
-shear: 2.0         # 混合架构形变处理能力
-perspective: 0.0001  # 微小透视变换
-flipud: 0.0        # 上下翻转
-fliplr: 0.5        # 左右翻转
-mosaic: 1.0        # mosaic增强
-mixup: 0.18        # 混合架构适合更强mixup
-copy_paste: 0.0    # copy-paste
-
-# 损失权重 (混合架构+类别不平衡优化)
-box: 0.05          # box损失
-cls: 0.28          # 混合架构分类能力优异，进一步降低
-cls_pw: 1.0        # 分类正权重
-obj: 1.3           # 目标性损失增强
-obj_pw: 1.0        # 目标性正权重
-iou_t: 0.23        # 混合架构精确定位
-anchor_t: 3.5      # 降低锚点阈值适配小目标
-fl_gamma: 0.8      # 强化焦点损失适配混合架构
-
-# 混合架构特定参数
-img_size: 640      # 训练图像尺寸
-
-# 针对RepVGG+RCSOSA混合架构的训练策略
-# 结合RepVGG的训练-推理效率和RCSOSA的特征提取能力
-# 在精度和速度之间取得最佳平衡
+lr0: 0.011
+lrf: 0.18
+momentum: 0.937
+weight_decay: 0.00045
+warmup_epochs: 5.0
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+box: 0.05
+cls: 0.28
+cls_pw: 1.0
+obj: 1.3
+obj_pw: 1.0
+iou_t: 0.23
+anchor_t: 3.5
+fl_gamma: 0.8
+hsv_h: 0.025
+hsv_s: 0.75
+hsv_v: 0.45
+degrees: 5.0
+translate: 0.12
+scale: 0.6
+shear: 2.0
+perspective: 0.0001
+flipud: 0.0
+fliplr: 0.5
+mosaic: 1.0
+mixup: 0.18
+copy_paste: 0.0
+paste_in: 0.0
+loss_ota: 0 
