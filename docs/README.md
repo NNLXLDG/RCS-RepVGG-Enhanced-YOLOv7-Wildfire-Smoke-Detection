@@ -24,9 +24,14 @@
 - **[YOLOv7-YAML-Parameters-Illustrated.md](./YOLOv7-YAML-Parameters-Illustrated.md)** - YAML参数图形化解析(英文)
 - **[YOLOv7-YAML-Parameters-Illustrated-CN.md](./YOLOv7-YAML-Parameters-Illustrated-CN.md)** - YAML参数图形化解析(中文)
 
+### 🏗️ 架构设计
+- **[Architecture_Diagrams_Guide.md](./Architecture_Diagrams_Guide.md)** - YOLOv4架构图使用指南
+- **[Architecture_Generation_Summary.md](./Architecture_Generation_Summary.md)** - 架构图生成总结
+
 ### 📈 超参数优化
 - **[HYPERPARAMETER_COMPARISON.md](./HYPERPARAMETER_COMPARISON.md)** - 超参数文件对比分析
 - **[HYPERPARAMETER_OPTIMIZATION_LOGIC.md](./HYPERPARAMETER_OPTIMIZATION_LOGIC.md)** - 烟火检测专用超参数优化逻辑
+- **[Hyperparameter_Cleanup_Summary.md](./Hyperparameter_Cleanup_Summary.md)** - 超参数文件清理与简化总结
 
 ### 🛠️ 代码重构
 - **[REFACTORING_SUMMARY.md](./REFACTORING_SUMMARY.md)** - test.py脚本重构总结
