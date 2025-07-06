@@ -1,0 +1,43 @@
+# RCS-YOLO v1.0  (Two heads)
+
+# Parameters
+nc: 2  # number of classes
+depth_multiple: 1.0  # model depth multiple
+width_multiple: 0.75  # layer channel multiple
+anchors:
+  - [37, 49,  89, 110]  # P4/16
+  - [177, 372,  249, 110]
+
+# backbone
+backbone: # 12462
+  # [from, number, module, args]
+  [[-1, 1, GhostRepVGG, [64, 3, 2]],  # 0-P1/2
+   [-1, 1, GhostRepVGG, [128, 3, 2]],  # 1-P2/4
+   [-1, 2, GhostRCSOSA, [128]],
+   [-1, 1, GhostRepVGG, [256, 3, 2]],  # 3-P3/8
+   [-1, 2, GhostRCSOSA, [256]],
+   [-1, 1, GhostRepVGG, [512, 3, 2]],  # 5-P4/16
+   [-1, 4, GhostRCSOSA, [512, True]],
+   [-1, 1, GhostRepVGG, [1024, 3, 2]],  # 7-P5/32
+   [-1, 2, GhostRCSOSA, [1024, True]],
+   [-1, 1, SPPF, [1024, 5]],  # 9
+  ]
+
+# head
+head:
+  [[-1, 1, GhostConv, [512, 1, 1]], # 10
+   [-1, 1, nn.Upsample, [None, 2, 'nearest']],
+   [-1, 2, GhostRCSOSA, [512]],  # 12
+
+   [[-1, 6], 1, Concat, [1]],  # cat backbone P4
+   [-1, 2, GhostRCSOSA, [512]],  # 14
+
+   [-1, 1, GhostRepVGG, [512, 3, 2]],
+   [[-1, 10], 1, Concat, [1]],  # cat head P5
+   [-1, 2, GhostRCSOSA, [768]],  # 17
+
+   [14, 1, GhostRepVGG, [512, 3, 1]],
+   [17, 1, GhostRepVGG, [768, 3, 1]],
+
+   [[18, 19], 1, IDetect, [nc, anchors]],  # Detect(P4, P5)
+  ]

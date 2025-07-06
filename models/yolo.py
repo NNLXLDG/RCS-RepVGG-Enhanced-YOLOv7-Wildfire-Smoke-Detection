@@ -15,7 +15,6 @@ from utils.general import make_divisible, check_file, set_logging
 from utils.torch_utils import time_synchronized, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
     select_device, copy_attr
 from utils.loss import SigmoidBin
-
 try:
     import thop  # for FLOPS computation
 except ImportError:
@@ -760,19 +759,19 @@ class Model(nn.Module):
 def parse_model(d, ch):  # model_dict, input_channels(3)
     logger.info('\n%3s%18s%3s%10s  %-40s%-30s' % ('', 'from', 'n', 'params', 'module', 'arguments'))
     anchors, nc, gd, gw = d['anchors'], d['nc'], d['depth_multiple'], d['width_multiple']
-    na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors  # number of anchors
-    no = na * (nc + 5)  # number of outputs = anchors * (classes + 5)
+    na = (len(anchors[0]) // 2) if isinstance(anchors, list) else anchors
+    no = na * (nc + 5)
 
-    layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
-    for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
-        m = eval(m) if isinstance(m, str) else m  # eval strings
+    layers, save, c2 = [], [], ch[-1]
+    for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):
+        m = eval(m) if isinstance(m, str) else m
         for j, a in enumerate(args):
             try:
-                args[j] = eval(a) if isinstance(a, str) else a  # eval strings
+                args[j] = eval(a) if isinstance(a, str) else a
             except:
                 pass
 
-        n = max(round(n * gd), 1) if n > 1 else n  # depth gain
+        n = max(round(n * gd), 1) if n > 1 else n
         if m in [nn.Conv2d, Conv, RobustConv, RobustConv2, DWConv, GhostConv, RepConv, RepConv_OREPA, DownC,
                  SPP, SPPF, SPPCSPC, GhostSPPCSPC, MixConv2d, Focus, Stem, GhostStem, CrossConv,
                  Bottleneck, BottleneckCSPA, BottleneckCSPB, BottleneckCSPC,
@@ -784,12 +783,11 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                  Ghost, GhostCSPA, GhostCSPB, GhostCSPC,
                  SwinTransformerBlock, STCSPA, STCSPB, STCSPC,
                  SwinTransformer2Block, ST2CSPA, ST2CSPB, ST2CSPC,
-                 RepVGG, RCSOSA
-                 ]:
+                 RepVGG, RCSOSA, GhostRepVGG, GhostRCSOSA, GhostSEBlock,  # 添加 Ghost 模块
+                 GhostSR, GhostResSR]:  # 添加 Ghost 模块
             c1, c2 = ch[f], args[0]
-            if c2 != no:  # if not output
+            if c2 != no:
                 c2 = make_divisible(c2 * gw, 8)
-
             args = [c1, c2, *args[1:]]
             if m in [DownC, SPPCSPC, GhostSPPCSPC,
                      BottleneckCSPA, BottleneckCSPB, BottleneckCSPC,
@@ -800,8 +798,9 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                      RepResXCSPA, RepResXCSPB, RepResXCSPC,
                      GhostCSPA, GhostCSPB, GhostCSPC,
                      STCSPA, STCSPB, STCSPC,
-                     ST2CSPA, ST2CSPB, ST2CSPC, RCSOSA]:
-                args.insert(2, n)  # number of repeats
+                     ST2CSPA, ST2CSPB, ST2CSPC, 
+                     RCSOSA, GhostRCSOSA, GhostSEBlock]:  # 添加 GhostRCSOSA 和 GhostSEBlock
+                args.insert(2, n)
                 n = 1
         elif m is nn.BatchNorm2d:
             args = [ch[f]]
