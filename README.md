@@ -2,7 +2,7 @@
 
 为此版本做出突出贡献的成员：陈颢元，谢许康，黄昊本（排名不分先后）
 
-测试结果网盘链接：[百度网盘链接](https://pan.baidu.com/s/1B4v_M5CpDh8ptIuvvvYYTQ?pwd=8nwc  " final.zip 提取码: 8nwc ")
+测试结果网盘链接：[百度网盘链接](https://pan.baidu.com/s/1B4v_M5CpDh8ptIuvvvYYTQ?pwd=8nwc " final.zip 提取码: 8nwc ")
 
 **其中包括：**
 
@@ -16,8 +16,9 @@
 
 5.旧的训练文件和推理文件已经放入previous_ver文件夹中
 
+下方的所有内容原本都是为组员训练和测试准备的，在这里保留痕迹，也方便其他人进行调试。
 
-下方的所有内容原本都是为组员训练和测试准备的，在这里保留痕迹。
+推理程序的指令同样在下方给出。
 
 # 指令
 
@@ -61,8 +62,16 @@ python -m torch.distributed.launch --nproc_per_node 4 --master_port 9527 train.p
 
 #### Testing
 
-The model weights we pretrained on the brain tumor detection was saved as best.pt in the directory [./runs/train/exp/weights/](https://github.com/mkang315/RCS-YOLO/tree/main/runs/train).
+模型权重文件请在百度网盘下载，将**权重文件换为final中对应的权重**
 
 ```
-python test.py --data datasets_smokefire\data.yaml --img 640 --batch 8 --conf 0.001 --iou 0.65 --device 0 --weights runs/train/exp/weights/best.pt --name val
+python test.py --data datasets_smokefire\data.yaml --img 640 --batch 8 --conf 0.001 --iou 0.65 --device 0 --weights runs/train/exp/weights/best.pt --name val -task val
+```
+
+#### Detecting
+
+模型权重文件请在百度网盘下载，将**权重文件换为final中对应的权重**
+
+```
+python detect.py --weights runs/train/exp/weights/best.pt
 ```
