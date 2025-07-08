@@ -178,21 +178,66 @@ class GhostRCSOSA(nn.Module):
 
 # 原始 SR、ResSR、RCSOSA 保持不变
 class SR(nn.Module):
-    # 原始实现保持不变
-    pass
+    # Shuffle RepVGG
+    def __init__(self, c1, c2):
+        super().__init__()
+        c1_ = int(c1 // 2)
+        c2_ = int(c2 // 2)
+        self.repconv = RepVGG(c1_, c2_)
+
+    def forward(self, x):
+        x1, x2 = x.chunk(2, dim=1)
+        out = torch.cat((x1, self.repconv(x2)), dim=1)
+        out = self.channel_shuffle(out, 2)
+        return out
+
+    def channel_shuffle(self, x, groups):
+        batchsize, num_channels, height, width = x.data.size()
+        channels_per_group = num_channels // groups
+        x = x.view(batchsize, groups, channels_per_group, height, width)
+        x = torch.transpose(x, 1, 2).contiguous()
+        x = x.view(batchsize, -1, height, width)
+        return x
 
 class ResSR(nn.Module):
-    # 原始实现保持不变
-    pass
+    # Res Shuffle RepVGG
+    def __init__(self, c, shortcut=False):
+        super().__init__()
+        self.repconv1 = RepVGG(c, c)
+        self.repconv2 = RepVGG(c, c)
+        self.shortcut = shortcut
 
-class RCSOSA(nn.Module):
-    # 原始实现保持不变
-    pass
+    def forward(self, x):
+        return (x + self.repconv2(self.repconv1(x))) if self.shortcut else self.repconv2(self.repconv1(x))
 
 def make_divisible(x, divisor):
+    # Returns nearest x divisible by divisor
     if isinstance(divisor, torch.Tensor):
-        divisor = int(divisor.max())
+        divisor = int(divisor.max())  # to int
     return math.ceil(x / divisor) * divisor
+
+class RCSOSA(nn.Module):
+    # VoVNet with Res Shuffle RepVGG
+    def __init__(self, c1, c2, n=1, se=False, e=0.5, stackrep=True):
+        super().__init__()
+        n_ = n // 2
+        c_ = make_divisible(int(c1 * e), 8)
+        # self.conv1 = Conv(c1, c_)
+        self.conv1 = RepVGG(c1, c_)
+        self.conv3 = RepVGG(int(c_ * 3), c2)
+        self.sr1 = nn.Sequential(*[SR(c_, c_) for _ in range(n_)])
+        self.sr2 = nn.Sequential(*[SR(c_, c_) for _ in range(n_)])
+
+        self.se = None
+        if se:
+            self.se = SEBlock(c2)
+
+    def forward(self, x):
+        x1 = self.conv1(x)
+        x2 = self.sr1(x1)
+        x3 = self.sr2(x2)
+        x = torch.cat((x1, x2, x3), 1)
+        return self.conv3(x) if self.se is None else self.se(self.conv3(x))
 
 if __name__ == '__main__':
     # 测试 Ghost 模块
